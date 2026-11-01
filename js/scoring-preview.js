@@ -66,11 +66,11 @@ function updateScoringPreview(){
  for(const k of ['goalExponent','assistExponent']){
    const cfg=$('cfg-'+k),range=$('strength-'+k),label=$('value-'+k);
    if(cfg&&range&&Number.isFinite(Number(cfg.value))&&cfg.value.trim()!=='')range.value=cfg.value;
-   if(label)label.textContent=cfg&&cfg.value.trim()!==''&&Number.isFinite(Number(cfg.value))?Number(cfg.value).toFixed(2):'—';
+   if(label)label.textContent=cfg&&typeof cfg.value==='string'&&cfg.value.trim()!==''&&Number.isFinite(Number(cfg.value))?Number(cfg.value).toFixed(2):'—';
  }
  const numbers=['goalExponent','assistExponent','unnamedWeight','unassistedPct','oneAssistPct'].map(k=>$('cfg-'+k));
  const inputs=numbers.concat([$('preview-team-goals')]);
- if(inputs.some(e=>!e||e.value.trim()===''||!Number.isFinite(Number(e.value)))){
+ if(inputs.some(e=>!e||typeof e.value!=='string'||e.value.trim()===''||!Number.isFinite(Number(e.value)))){
    output.innerHTML='<p class="odds-status odds-invalid">Enter valid scoring settings to see the preview.</p>';return;
  }
  const [goalExp,assistExp,unnamed,zero,one,teamGoals]=inputs.map(e=>Number(e.value));
