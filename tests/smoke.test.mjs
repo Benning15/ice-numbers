@@ -457,6 +457,7 @@ assert.match(settingsHtml,/data-scoring-preset="balanced"/);
 assert.match(settingsHtml,/data-scoring-preset="moderate"/);
 assert.match(settingsHtml,/data-scoring-preset="stars"/);
 assert.match(settingsHtml,/id="preview-rating-2"/);
+assert.equal((settingsHtml.match(/Empty slot \(no player\)/g)||[]).length,3);
 assert.match(settingsHtml,/id="preview-team-goals"/);
 assert.match(settingsHtml,/id="preview-auto-goals"[^>]*type="checkbox" checked/);
 assert.match(settingsHtml,/Projected team goals in season/);
@@ -526,6 +527,47 @@ domNodes['preview-rating-0'].value='8';
 evaluate('updateScoringPreview()');
 assert.equal(Number(domNodes['preview-team-goals'].value),initialAuto);
 console.log('PASS: Live scoring preview automatically forecasts GF from roster ratings, scoring rules and season length; optional manual override; no live RNG changes');
+
+// A one- or two-player roster must not accidentally create fake +0 stars.
+// The missing slots must carry zero scoring/assist weight, and be absent from
+// the displayed forecast; they should never generate a featured scorer.
+const partialScorers=JSON.parse(evaluate("(function(){state=initialState();const r=state.settings;return JSON.stringify({one:scoringPreviewOdds([8,0,0],1.35,1.2,8,6,19,90,30),two:scoringPreviewOdds([8,7,0],1.35,1.2,8,6,19,120,30),sameForecast:scoringPreviewTeamGoals([8,0,0],r,30)===scoringPreviewTeamGoals([8],r,30),weak:scoringPreviewTeamGoals([8,0,0],r,30),deep:scoringPreviewTeamGoals([8,8,8],r,30)})})()"));
+assert.equal(partialScorers.one.goals[1],0);
+assert.equal(partialScorers.one.goals[2],0);
+assert.equal(partialScorers.one.assists[1],0);
+assert.equal(partialScorers.one.assists[2],0);
+assert.ok(Math.abs(partialScorers.one.goals.reduce((a,b)=>a+b,0)-1)<1e-10);
+assert.ok(Math.abs(partialScorers.one.assists.reduce((a,b)=>a+b,0)-1.69)<1e-10);
+assert.ok(Math.abs(partialScorers.one.goals[0]*90-30)<1e-9);
+assert.equal(partialScorers.two.goals[2],0);
+assert.equal(partialScorers.two.assists[2],0);
+assert.ok(Math.abs(partialScorers.two.goals.reduce((a,b)=>a+b,0)-1)<1e-10);
+assert.equal(partialScorers.sameForecast,true);
+assert.ok(partialScorers.weak<partialScorers.deep);
+
+for(const [k,value] of [['preview-rating-0','8'],['preview-rating-1','0'],['preview-rating-2','0']])domNodes[k].value=value;
+domNodes['preview-auto-goals'].checked=true;
+evaluate('updateScoringPreview()');
+const soloPreview=domNodes['scoring-preview-results'].innerHTML;
+assert.match(soloPreview,/Player A \(\+8, target 30\)/);
+assert.doesNotMatch(soloPreview,/Player B \(/);
+assert.doesNotMatch(soloPreview,/Player C \(/);
+assert.match(soloPreview,/Unnamed skaters/);
+assert.equal(domNodes['preview-target-1'].disabled,true);
+assert.equal(domNodes['preview-target-2'].disabled,true);
+assert.equal(domNodes['preview-target-label-2'].textContent,'—');
+domNodes['preview-rating-1'].value='7';
+evaluate('updateScoringPreview()');
+const duoPreview=domNodes['scoring-preview-results'].innerHTML;
+assert.match(duoPreview,/Player B \(\+7, target 30\)/);
+assert.doesNotMatch(duoPreview,/Player C \(/);
+assert.equal(domNodes['preview-target-1'].disabled,false);
+domNodes['preview-rating-0'].value='0';
+domNodes['preview-rating-1'].value='0';
+evaluate('updateScoringPreview()');
+assert.match(domNodes['scoring-preview-results'].innerHTML,/Select at least one featured player/);
+console.log('PASS: empty calculator slots support real one- or two-player teams without ghost goals, assists or offensive depth');
+
 
 
 assert.match(settingsHtml,/id="cfg-unassistedPct"[^>]*value="6"/);
