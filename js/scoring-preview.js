@@ -9,6 +9,51 @@ const SCORING_PRESETS={
  default:[1.35,1.2],
  stars:[1.65,1.55]
 };
+// Deterministic Monte Carlo forecast of the ACTUAL goal-scoring rules.
+// All randomness is local: opening the Settings page never touches a league's
+// seeded game RNG or simulates a real match. We sample rolls and score noise
+// against a representative established opponent (+8/+1/+1 roster). The
+// original score-cap, margin, overtime and Offensive Depth rules are mirrored;
+// featured goal attribution is then estimated separately below.
+function scoringPreviewTeamGoals(ratings,settings,gamesPerTeam=settings.gamesPerTeam){
+ const rollMax=Math.max(1,Math.floor(Number(settings.rollMax??12)));
+ const maxBonus=Math.max(0,Number(settings.maxBonus??8));
+ const cap=Math.max(2,Math.floor(Number(settings.maxGoalsPerTeam??15)));
+ const home={roster:ratings.map(bonus=>({bonus}))};
+ const rival={roster:[{bonus:8},{bonus:1},{bonus:1}]};
+ const bonusA=Math.min(maxBonus,ratings.reduce((sum,r)=>sum+r,0));
+ const bonusB=Math.min(maxBonus,10);
+ let rng=0x4f1bbcdc;
+ const draw=()=>{
+  let x=rng=(rng+0x6D2B79F5)>>>0;
+  x=Math.imul(x^(x>>>15),x|1);
+  x^=x+Math.imul(x^(x>>>7),x|61);
+  return ((x^(x>>>14))>>>0)/4294967296;
+ };
+ const clampScore=(n,low,high)=>Math.min(high,Math.max(low,n));
+ const extra=(team,roll)=>{
+  const expected=offensiveDepthExpectation(team,roll,settings);
+  return Math.floor(expected)+(draw()<expected%1?1:0);
+ };
+ let goals=0;
+ const samples=6000;
+ for(let i=0;i<samples;i++){
+  const rollA=Math.floor(draw()*(rollMax+1)),rollB=Math.floor(draw()*(rollMax+1));
+  const totalA=rollA+bonusA,totalB=rollB+bonusB;
+  const coin=rollA===rollB||totalA===totalB;
+  const winA=coin?draw()<.5:totalA>totalB;
+  let lose=clampScore(Math.round(1+Math.min(rollA,rollB)*.19+(draw()-.5)*2.8),0,Math.min(6,cap-1));
+  const margin=coin?1:clampScore(Math.round(Math.abs(totalA-totalB)/3.8+(draw()-.5)*1.7),1,7);
+  let win=clampScore(lose+margin,1,cap);
+  if(!coin&&win>=7&&win<cap&&draw()<.05)win=Math.min(cap,win+1+Math.floor(draw()*3));
+  const extraA=extra(home,rollA),extraB=extra(rival,rollB);
+  const winnerExtra=winA?extraA:extraB,loserExtra=winA?extraB:extraA;
+  if(coin){lose=Math.min(cap-1,lose+Math.max(winnerExtra,loserExtra));win=lose+1;}
+  else{lose=Math.min(cap-1,lose+loserExtra);win=Math.min(cap,Math.max(win+winnerExtra,lose+1));}
+  goals+=winA?win:lose;
+ }
+ return Math.round(goals/samples*gamesPerTeam);
+}
 function scoringPreviewOdds(ratings,goalExponent,assistExponent,unnamedWeight,unassistedPct,oneAssistPct,teamGoals=90,gamesPerTeam=30,personalTargets=[30,30,30]){
  const featuredGoalRates=ratings.map((v,i)=>Math.pow((v+1)/9,goalExponent)*(personalTargets[i]??30)/30);
  const featuredTotal=featuredGoalRates.reduce((sum,v)=>sum+v,0);
@@ -46,8 +91,8 @@ function scoringPreviewMarkup(s){
   '<h3>Live scoring calculator</h3>'+
   '<p class="help">Choose a three-player roster to see who receives goals and assists. This is a preview only — it does not generate players or change game results. Personal goal target sliders below are examples, not edits to real players. Actual targets stay hidden and shift gradually each season. Neutral Motivation (0) is assumed.</p>'+
   '<div class="scoring-preview-controls">'+ratings.map(select).join('')+
-  '<div class="control"><label for="preview-team-goals">Assumed team goals in season</label><input type="number" id="preview-team-goals" min="1" max="2000" step="1" value="'+(s.gamesPerTeam*3)+'"></div></div>'+
-  '<p class="help">Team goals are an assumption, not a forecast. Players start with hidden targets of 25–35 per 30 games (mean 30), then can gradually move as high as 40 over their careers. These sliders show hypothetical examples only; actual scoring depends on team goals, Motivation and luck.</p>'+
+  '<div class="control"><label for="preview-team-goals">Projected team goals in season</label><input type="number" id="preview-team-goals" min="1" max="2000" step="1" value="'+scoringPreviewTeamGoals(ratings,s,s.gamesPerTeam)+'" readonly><label class="sub tiny" for="preview-auto-goals"><input id="preview-auto-goals" type="checkbox" checked> Auto-estimate from ratings and rules</label></div></div>'+
+  '<p class="help">Automatic team-goal estimates follow the game’s roll, scoring-margin, overtime, Offensive Depth and goal-cap rules. The example team faces a representative +8/+1/+1 opponent across many simulated matchups. This is a projection, not a guarantee or an analysis of actual league opponents. Uncheck Auto-estimate to enter your own team goals. Real players have hidden targets and Motivation.</p>'+
   '<div class="scoring-presets"><span class="sub tiny">Quick presets:</span>'+
   '<button type="button" data-scoring-preset="balanced">Balanced</button>'+
   '<button type="button" data-scoring-preset="moderate">Moderate</button>'+
@@ -73,20 +118,45 @@ function updateScoringPreview(){
    if(label)label.textContent=cfg&&typeof cfg.value==='string'&&cfg.value.trim()!==''&&Number.isFinite(Number(cfg.value))?Number(cfg.value).toFixed(2):'—';
  }
  const numbers=['goalExponent','assistExponent','unnamedWeight','unassistedPct','oneAssistPct'].map(k=>$('cfg-'+k));
- const inputs=numbers.concat([$('preview-team-goals')]);
- if(inputs.some(e=>!e||typeof e.value!=='string'||e.value.trim()===''||!Number.isFinite(Number(e.value)))){
+ if(numbers.some(e=>!e||typeof e.value!=='string'||e.value.trim()===''||!Number.isFinite(Number(e.value)))){
    output.innerHTML='<p class="odds-status odds-invalid">Enter valid scoring settings to see the preview.</p>';return;
  }
- const [goalExp,assistExp,unnamed,zero,one,teamGoals]=inputs.map(e=>Number(e.value));
+ const [goalExp,assistExp,unnamed,zero,one]=numbers.map(e=>Number(e.value));
  const ratingEls=[0,1,2].map(i=>$('preview-rating-'+i));
  if(ratingEls.some(e=>!e)||ratingEls.some(e=>!Number.isInteger(Number(e.value))||Number(e.value)<1||Number(e.value)>8)||
   goalExp<.2||goalExp>3||assistExp<.2||assistExp>3||unnamed<=0||zero<0||one<0||zero+one>100||
-  !Number.isInteger(teamGoals)||teamGoals<1||teamGoals>2000){
-   output.innerHTML='<p class="odds-status odds-invalid">Check the goal/assist strength, probabilities, roster ratings and team-goal assumption.</p>';return;
+  !Number.isInteger(Number($('cfg-gamesPerTeam')?.value??state.settings.gamesPerTeam))){
+   output.innerHTML='<p class="odds-status odds-invalid">Check the goal/assist strength, probabilities and roster ratings.</p>';return;
  }
  const ratings=ratingEls.map(e=>Number(e.value));
+ const gamesPerTeam=Number($('cfg-gamesPerTeam')?.value??state.settings.gamesPerTeam);
+ const teamGoalsEl=$('preview-team-goals');
+ if(!teamGoalsEl)return;
+ const auto=$('preview-auto-goals')?.checked!==false;
+ teamGoalsEl.readOnly=auto;
+ if(auto){
+  const rules={...state.settings};
+  for(const k of ['offensiveDepthStrength','maxGoalsPerTeam','maxBonus','rollMax']){
+   const input=$('cfg-'+k);
+   if(input&&String(input.value).trim()===''){
+    output.innerHTML='<p class="odds-status odds-invalid">Enter valid game scoring rules for the estimate.</p>';return;
+   }
+   if(input)rules[k]=Number(input.value);
+  }
+  if(!Number.isFinite(rules.offensiveDepthStrength)||rules.offensiveDepthStrength<0||rules.offensiveDepthStrength>3||
+     !Number.isInteger(rules.maxGoalsPerTeam)||rules.maxGoalsPerTeam<9||rules.maxGoalsPerTeam>15||
+     !Number.isInteger(rules.rollMax)||rules.rollMax<4||rules.rollMax>100||
+     !Number.isInteger(rules.maxBonus)||rules.maxBonus<0||rules.maxBonus>30){
+    output.innerHTML='<p class="odds-status odds-invalid">Check Offensive Depth, roll maximum, team bonus cap and goal ceiling.</p>';return;
+  }
+  teamGoalsEl.value=String(scoringPreviewTeamGoals(ratings,rules,gamesPerTeam));
+ }
+ const teamGoals=Number(teamGoalsEl.value);
+ if(teamGoalsEl.value.trim()===''||!Number.isInteger(teamGoals)||teamGoals<1||teamGoals>2000){
+  output.innerHTML='<p class="odds-status odds-invalid">Enter team goals between 1 and 2000, or enable Auto-estimate.</p>';return;
+ }
  const personalTargets=[0,1,2].map(i=>{const value=Number($('preview-target-'+i)?.value);const target=Number.isInteger(value)&&value>=25&&value<=40?value:30;const label=$('preview-target-label-'+i);if(label)label.textContent=String(target);return target});
- const result=scoringPreviewOdds(ratings,goalExp,assistExp,unnamed,zero,one,teamGoals,Number($('cfg-gamesPerTeam')?.value)||state.settings.gamesPerTeam,personalTargets);
+ const result=scoringPreviewOdds(ratings,goalExp,assistExp,unnamed,zero,one,teamGoals,gamesPerTeam,personalTargets);
  const items=ratings.map((r,i)=>({name:'Player '+('ABC'[i])+' (+'+r+', target '+personalTargets[i]+')',i})).concat({name:'Unnamed skaters',i:3});
  const rows=items.map(({name,i})=>{
    const share=result.goals[i]*100;
@@ -95,7 +165,7 @@ function updateScoringPreview(){
    '<td>'+(result.assists[i]*teamGoals).toFixed(1)+'</td>'+
    '<td><b>'+((result.goals[i]+result.assists[i])*teamGoals).toFixed(1)+'</b></td></tr>';
  }).join('');
- output.innerHTML='<p class="sub tiny">Projected scoring across <b>'+fmt(teamGoals)+'</b> team goals &middot; '+result.assistsPerGoal.toFixed(2)+' assists per goal</p>'+
+ output.innerHTML='<p class="sub tiny">'+(auto?'Auto-estimated':'Manually assumed')+' <b>'+fmt(teamGoals)+'</b> team goals over '+fmt(gamesPerTeam)+' games &middot; '+result.assistsPerGoal.toFixed(2)+' assists per goal</p>'+
   '<div class="tablewrap"><table class="preview-table"><thead><tr><th>Scorer</th><th>Goal chance</th><th>Goals</th><th>Assists</th><th>Points</th></tr></thead>'+
   '<tbody>'+rows+'</tbody></table></div>'+
   '<p class="help">A neutral +8 starts with a hidden personal target in the 25–35 range, averaging 30 across new players, and may develop as high as 40. Sliders here only explore hypothetical player tendencies; their real values are never shown. When expected team scoring is too low to support all featured goal targets, the goals must be shared. A scorer cannot assist their own goal, and each named player can earn at most one assist per goal. This is a mathematical preview, not a guaranteed result.</p>';
