@@ -613,7 +613,7 @@ sandbox.mockDefaultDB={
 evaluate("db=mockDefaultDB");
 await evaluate("commitDefaultSettings({...DEFAULTS,rollMax:29,offensiveDepthStrength:2.5,maxGoalsPerTeam:14,goalTargetAnnualChange:1})");
 assert.equal(storeData.meta.get('customSettingsDefaults').value.rollMax,29);
-assert.equal(storeData.meta.get('main').value.season,45,'the user's existing league remains unchanged when a default is stored');
+assert.equal(storeData.meta.get('main').value.season,45,"the user's existing league remains unchanged when a default is stored");
 await evaluate("clearAll()");
 assert.equal(storeData.meta.has('main'),false);
 assert.equal(storeData.meta.get('customSettingsDefaults').value.rollMax,29,'stored defaults survive new-league resets and backup import');
