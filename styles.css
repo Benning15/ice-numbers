@@ -15,3 +15,14 @@
 .tablewrap table:has(tbody td:nth-child(2) .team-inline) thead th:nth-child(2),
 .tablewrap table:has(tbody td:nth-child(7) .team-inline) thead th:nth-child(7){text-align:left}
 .standings-layout th:nth-child(2),.standings-layout td:nth-child(2){text-align:left;min-width:205px}.standings-layout td:nth-child(2) .linkbtn{display:inline-flex;align-items:center;text-align:left}.standings-layout td:nth-child(2) .team-inline{justify-content:flex-start;gap:8px}.standings-layout td:nth-child(2) .team-mark{flex:0 0 25px}.run-league-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,265px);gap:34px;align-items:start;margin-top:18px}.run-league-regular{display:flex;align-items:flex-start}.run-league-regular button{min-height:44px}.run-league-bulk{display:flex;flex-direction:column;gap:10px;border-left:1px solid var(--stroke);padding-left:25px}.run-league-bulk button{display:block;width:100%;min-height:44px;text-align:center}.run-league-label{font-size:12px;font-weight:650;color:var(--muted);letter-spacing:.03em;margin-bottom:2px}@media(max-width:650px){.run-league-layout{grid-template-columns:1fr;gap:20px}.run-league-bulk{border-left:0;border-top:1px solid var(--stroke);padding-left:0;padding-top:18px}}.cutoff td{border-bottom:3px solid #5ed0bb!important}.series .stickybar{margin-bottom:8px}.panel .series{min-width:0}th.sort:focus-visible{outline:2px solid #5ed0bb;outline-offset:-2px}
+
+/* Team Records: collapsible franchise season archive, showing ~10 rows at once. */
+.team-history-section>summary{cursor:pointer;font-weight:700;font-size:19px;line-height:1.5;padding:0 2px}
+.team-history-section>summary:hover{color:var(--accent)}
+.team-history-section>summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:3px}
+.team-history-section[open]>summary{margin-bottom:8px}
+.team-season-scroll{max-height:calc(36px + 10 * 42px);overflow:auto;overscroll-behavior:contain;border:1px solid var(--stroke);border-radius:8px}
+.team-season-scroll .tablewrap{overflow:visible;max-width:none}
+.team-season-scroll table{min-width:620px}
+.team-season-scroll tbody tr{height:42px}
+.team-season-scroll thead th{position:sticky;top:0;z-index:2}
