@@ -40,9 +40,38 @@ function clamp(x,lo,hi){return Math.max(lo,Math.min(hi,x))}
 function ensurePlayer(p){for(const key of ['regGoals','regAssists','regOTL','playoffGoals','playoffAssists','regGames','regWins','regLosses','playoffGames','playoffWins','playoffLosses','seasons','titles'])p[key]??=0;return p}
 function pickWeighted(items){let sum=items.reduce((z,i)=>z+i.weight,0),v=random()*sum;for(const item of items){v-=item.weight;if(v<0)return item.id}return items[items.length-1].id}
 function scoringWeight(p,assist=false){const effective=Math.max(0,p.bonus+(Number.isInteger(p.motivation)?p.motivation:0));return Math.pow(effective+1,assist?(state.settings.assistExponent??1.2):(state.settings.goalExponent??1.35))}
+// Neutral +8 target: one expected goal per game, regardless of whether the
+// roster has one star or three. Actual individual years still vary through
+// random goal draws, hidden Motivation, team goal supply, and opponents.
+// The team's realized goals-per-game estimate is learned over the season;
+// a small five-game prior prevents the first game's probabilities from being
+// dictated by a single outlier. This only changes WHO scores, not game scores.
+function individualGoalRate(p,goalExponent=state.settings.goalExponent??1.35){
+ const effective=Math.max(0,p.bonus+(Number.isInteger(p.motivation)?p.motivation:0));
+ return Math.pow((effective+1)/9,goalExponent);
+}
+function scoringGoalsEstimate(team,settings=state.settings){
+ const strength=Math.max(0,Number(settings.offensiveDepthStrength??1));
+ const depth=Math.max(0,team.roster.reduce((n,p)=>n+p.bonus,0)-settings.maxBonus);
+ const startingEstimate=3+Math.min(3,depth/16*strength*.5);
+ const gp=Math.max(0,Number(team.scoringGP||0));
+ const gf=Math.max(0,Number(team.scoringGF||0));
+ return (startingEstimate*5+gf)/(5+gp);
+}
+function goalScorerPool(team,settings=state.settings){
+ const featured=team.roster.map(p=>({id:p.id,weight:individualGoalRate(p,settings.goalExponent??1.35)}));
+ const required=featured.reduce((sum,p)=>sum+p.weight,0);
+ const expectedGF=scoringGoalsEstimate(team,settings);
+ // Unnamed skaters take the goals not assigned to featured players.
+ // Keep the existing Unnamed Weight control as a relative adjustment:
+ // at its default of 8 it preserves the one-goal target; higher/lower
+ // values deliberately redistribute goals toward/from unnamed players.
+ const unnamed=Math.max(0,expectedGF-required)*(Number(settings.unnamedWeight??8)/8);
+ return [{id:null,weight:unnamed},...featured];
+}
 function scoringPlay(team,stage,game,changed){
  const players=team.roster;
- const scorerPool=[{id:null,weight:state.settings.unnamedWeight??8},...players.map(p=>({id:p.id,weight:scoringWeight(p)}))];
+ const scorerPool=goalScorerPool(team);
  const scorerId=pickWeighted(scorerPool);
  let assisterIds=[],anonymousAssists=0;
  const unassisted=state.settings.unassistedPct??6,one=state.settings.oneAssistPct??19;
@@ -116,7 +145,15 @@ function playGame(a,b,bonusA,bonusB,season,stage,round,seriesNo,gameNo,gs,change
  const totalA=rollA+bonusA,totalB=rollB+bonusB,coin=rollA===rollB||totalA===totalB;
  const winner=coin?(random()<.5?a:b):(totalA>totalB?a:b),loser=winner===a?b:a;
  const g={id:`S${season}-${stage}-${String(state.totalGames).padStart(8,'0')}`,season,stage,round,seriesNo,gameNo,teamIds:[a.id,b.id],aId:a.id,bId:b.id,rollA,rollB,bonusA,bonusB,totalA,totalB,coin,coinReason:rollA===rollB?'original-roll':(coin?'adjusted-total':null),winnerId:winner.id,loserId:loser.id};
- generateScore(a,b,g,changed);gs.push(g);state.totalGames++;if(coin)state.totalCoin++;
+ generateScore(a,b,g,changed);
+ // Save this season's running scoring rate AFTER allocating today's goals.
+ // The counters travel with the league's meta state, so advancing a saved
+ // playoff bracket produces the same future odds as continuous play.
+ for(const t of [a,b]){
+  t.scoringGP=(t.scoringGP||0)+1;
+  t.scoringGF=(t.scoringGF||0)+(t.id===a.id?g.scoreA:g.scoreB);
+ }
+ gs.push(g);state.totalGames++;if(coin)state.totalCoin++;
  if(stage==='regular'){
    winner.regW++;loser.regPoints+=coin?1:0;loser.regOTL=(loser.regOTL||0)+(coin?1:0);if(!coin)loser.regL++;
    winner.regPoints+=2;
