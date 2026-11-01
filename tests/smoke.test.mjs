@@ -135,6 +135,44 @@ assert.ok(expectedOne>.25&&expectedOne<.4);
 assert.ok(expectedTrio>.20&&expectedTrio<.3);
 console.log('PASS: +8 target near 30 G in 30 GP on 1-star and 3-star teams, randomness and calibrated live preview');
 
+
+
+// V1.3.13: hidden individual goal tendencies and drift.
+assert.equal(evaluate('DEFAULTS.goalTargetAnnualChange'),2);
+const birthTargets=JSON.parse(evaluate("(function(){state=initialState();beginSeason();return JSON.stringify(state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,goalTarget:p.goalTarget,year:p.goalTargetSeason})))})()"));
+assert.ok(birthTargets.length>=16&&birthTargets.length<=48);
+assert.ok(birthTargets.every(p=>Number.isInteger(p.goalTarget)&&p.goalTarget>=25&&p.goalTarget<=35&&p.year===1));
+assert.ok(new Set(birthTargets.map(p=>p.goalTarget)).size>1,'players must have independent initial goal targets');
+const yearTwoTargets=JSON.parse(evaluate("\n(function(){\n state=initialState();\n const first=simulateSeason();\n const old=new Map(state.teams.flatMap(t=>t.roster).map(p=>[p.id,{target:p.goalTarget,season:p.goalTargetSeason}]));\n beginSeason();\n return JSON.stringify({old:[...old],next:state.teams.flatMap(t=>t.roster).filter(p=>old.has(p.id)).map(p=>({id:p.id,target:p.goalTarget,season:p.goalTargetSeason})),\n publicRosters:first.result.rosters,activeRosters:state.activeSeason.rosters});\n})()"));
+for(const row of yearTwoTargets.next){
+ const previous=new Map(yearTwoTargets.old).get(row.id);
+ assert.ok(previous&&Math.abs(row.target-previous.target)<=2,JSON.stringify(row));
+ assert.ok(row.target>=25&&row.target<=35);
+ assert.equal(row.season,2);
+}
+assert.ok(Object.values(yearTwoTargets.publicRosters).flat().every(p=>p.goalTarget===undefined&&p.goalTargetSeason===undefined));
+assert.ok(Object.values(yearTwoTargets.activeRosters).flat().every(p=>p.goalTarget===undefined&&p.goalTargetSeason===undefined));
+const targetEdges=JSON.parse(evaluate("\n(function(){\n const saved=random;\n try{\n  state=initialState();\n  const p=makeNewPlayer(0,'spawn',1);\n  const atBirth=p.goalTarget;\n  const before=state.rngState;\n  const skip=advancePersonalGoalTarget(p,1);\n  const noRoll=state.rngState===before;\n  p.goalTarget=25; p.goalTargetSeason=1;\n  random=()=>0;\n  advancePersonalGoalTarget(p,2);\n  const atLow=p.goalTarget;\n  p.goalTarget=35;p.goalTargetSeason=2;\n  random=()=>.999999;\n  advancePersonalGoalTarget(p,3);\n  const atHigh=p.goalTarget;\n  p.goalTarget=30;p.goalTargetSeason=3;\n  state.settings.goalTargetAnnualChange=0;\n  random=()=>0;\n  advancePersonalGoalTarget(p,4);\n  const frozen=p.goalTarget;\n  p.goalTarget=30;p.goalTargetSeason=4;\n  state.settings.goalTargetAnnualChange=1;\n  advancePersonalGoalTarget(p,5);\n  const atMinusOne=p.goalTarget;\n  p.goalTarget=30;p.goalTargetSeason=5;\n  random=()=>.999999;\n  advancePersonalGoalTarget(p,6);\n  const atPlusOne=p.goalTarget;\n  return JSON.stringify({atBirth,skip,noRoll,atLow,atHigh,frozen,atMinusOne,atPlusOne,season:p.goalTargetSeason});\n }finally{random=saved}\n})()"));
+assert.ok(targetEdges.atBirth>=25&&targetEdges.atBirth<=35);
+assert.equal(targetEdges.skip,false);
+assert.equal(targetEdges.noRoll,true);
+assert.equal(targetEdges.atLow,25);
+assert.equal(targetEdges.atHigh,35);
+assert.equal(targetEdges.frozen,30);
+assert.equal(targetEdges.atMinusOne,29);
+assert.equal(targetEdges.atPlusOne,31);
+assert.equal(targetEdges.season,6);
+const oldTarget=JSON.parse(evaluate("\n(function(){\n state=initialState();beginSeason();\n const p=state.teams[0].roster[0];\n delete p.goalTarget;delete p.goalTargetSeason;\n const neutral=individualGoalRate({bonus:8,motivation:0});\n playNextGames();\n return JSON.stringify({neutral,absent:p.goalTarget===undefined,season:p.goalTargetSeason});\n})()"));
+assert.equal(oldTarget.neutral,1,'legacy saved players retain neutral 30-goal baseline during active playoffs');
+assert.equal(oldTarget.absent,true,'existing active season must not backfill hidden targets midplayoffs');
+const targetRate=JSON.parse(evaluate("JSON.stringify([25,30,35].map(goalTarget=>individualGoalRate({bonus:8,motivation:0,goalTarget})))"));
+assert.ok(targetRate.every((v,i)=>Math.abs(v-[25/30,1,35/30][i])<1e-10));
+const varied=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,8],1.35,1.2,8,6,19,120,30,[25,35,30]))"));
+assert.ok(Math.abs(varied.goals[0]*120-25)<1e-8);
+assert.ok(Math.abs(varied.goals[1]*120-35)<1e-8);
+assert.ok(Math.abs(varied.goals[2]*120-30)<1e-8);
+console.log('PASS: hidden 25–35 independent goal targets, bounded yearly ±2 drift, ±1/0 settings, no midseason changes, calibrated preview');
+
 // Hidden Motivation: randomized per-player permanent ranges, annual rolls,
 // save/resume safety, stats-archive secrecy, and both goal/assist weighting.
 assert.equal(evaluate('MOTIVATION_RANGES.reduce((s,r)=>s+r[2],0)'),100);
@@ -401,6 +439,12 @@ evaluate("view='settings';state=initialState();settings()");
 const settingsHtml=domNodes.app.innerHTML;
 assert.match(settingsHtml,/id="cfg-offensiveDepthStrength"[^>]*step="0.25"[^>]*value="3"/);
 assert.match(settingsHtml,/id="cfg-maxGoalsPerTeam"[^>]*value="15"/);
+assert.match(settingsHtml,/id="cfg-goalTargetAnnualChange"[^>]*type="range"[^>]*min="0"[^>]*max="2"[^>]*value="2"/);
+assert.match(settingsHtml,/id="goal-target-drift-label"/);
+assert.match(settingsHtml,/id="preview-target-0"/);
+assert.match(settingsHtml,/id="preview-target-1"/);
+assert.match(settingsHtml,/id="preview-target-2"/);
+
 assert.match(settingsHtml,/id="depth-preview"/);
 assert.match(domNodes['depth-preview'].textContent,/\+8 \/ \+8 \/ \+8 adding ~3\.00/);
 assert.match(settingsHtml,/Live scoring calculator/);
