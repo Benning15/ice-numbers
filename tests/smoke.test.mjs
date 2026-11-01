@@ -75,6 +75,19 @@ const saved = evaluate('state=initialState();beginSeason();JSON.stringify({activ
 assert.deepEqual(JSON.parse(saved), {active:true,teams:16});
 console.log('PASS: default teams, dashboards, player scoring, playoffs and resumable seasons');
 
+// A rare scoring surge can create nine-goal games even between evenly
+// rated teams, without ever changing the victor or OT's one-goal margin.
+const surgeTest=JSON.parse(evaluate("(function(){const original=random;try{let seq=[.999,.999,.01,.999];random=()=>seq.length?seq.shift():.5;state=initialState();let a={id:0,roster:[]},b={id:1,roster:[]};let g={rollA:12,rollB:1,totalA:20,totalB:9,coin:false,winnerId:0,stage:'regular'};generateScore(a,b,g);return JSON.stringify({a:g.scoreA,b:g.scoreB,plays:g.goalEvents.length})}finally{random=original}})()"));
+assert.deepEqual(surgeTest,{a:9,b:3,plays:12});
+const overtimeScore=JSON.parse(evaluate("(function(){const original=random;try{random=()=>.999;let a={id:0,roster:[]},b={id:1,roster:[]};let g={rollA:12,rollB:12,totalA:20,totalB:20,coin:true,winnerId:1,stage:'playoff'};generateScore(a,b,g);return JSON.stringify({a:g.scoreA,b:g.scoreB,plays:g.goalEvents.length})}finally{random=original}})()"));
+assert.equal(overtimeScore.b-overtimeScore.a,1);
+assert.equal(overtimeScore.plays,overtimeScore.a+overtimeScore.b);
+const upperCap=JSON.parse(evaluate("(function(){const original=random;try{random=()=>.999;let a={id:0,roster:[]},b={id:1,roster:[]};let g={rollA:50,rollB:0,totalA:80,totalB:0,coin:false,winnerId:0,stage:'regular'};generateScore(a,b,g);return JSON.stringify({a:g.scoreA,b:g.scoreB})}finally{random=original}})()"));
+assert.equal(upperCap.a,9);
+assert.ok(upperCap.a>upperCap.b);
+console.log('PASS: rare nine-goal surges, hard nine-goal cap, preserved winners and OT margins');
+
+
 
 const playerFixture = [
   {id:1, name:'Alex Alpha',teamId:0,regGoals:6,regAssists:2,playoffGoals:1,playoffAssists:1,regGames:10,titles:2,retireSeason:null},
