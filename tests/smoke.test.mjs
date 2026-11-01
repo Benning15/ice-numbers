@@ -179,10 +179,18 @@ console.log('PASS: Hidden Motivation -2..+2 ranges, annual persistent rolls, leg
 
 // Offensive Depth: uncapped roster is used only for extra scoring
 // opportunities; maxBonus still determines game outcomes.
-assert.equal(evaluate('DEFAULTS.offensiveDepthStrength'),1);
-assert.equal(evaluate('DEFAULTS.maxGoalsPerTeam'),9);
+assert.equal(evaluate('DEFAULTS.offensiveDepthStrength'),3);
+assert.equal(evaluate('DEFAULTS.maxGoalsPerTeam'),15);
+
+// The calibration settings now ship as defaults for newly created leagues,
+// but the existing controls remain adjustable for existing leagues.
+assert.equal(evaluate('initialState().settings.offensiveDepthStrength'),3);
+assert.equal(evaluate('initialState().settings.maxGoalsPerTeam'),15);
+assert.equal(evaluate("extraOffensiveGoals({roster:[{bonus:8},{bonus:8},{bonus:8}]},12)<=3"),true);
+assert.equal(evaluate("offensiveDepthExpectation({roster:[{bonus:8},{bonus:8},{bonus:8}]},12,{...state.settings,offensiveDepthStrength:0})"),0);
+
 const depthSamples=JSON.parse(evaluate("(function(){state=initialState();const f=(r,roll)=>offensiveDepthExpectation({roster:r.map(bonus=>({bonus}))},roll);return JSON.stringify({weak:f([8,1,1],12),deep:f([8,8,8],12),deepHalf:f([8,8,8],6),deepZero:f([8,8,8],0),off:offensiveDepthExpectation({roster:[{bonus:8},{bonus:8},{bonus:8}]},12,{...state.settings,offensiveDepthStrength:0})})})()"));
-assert.deepEqual(depthSamples,{weak:.125,deep:1,deepHalf:.5,deepZero:0,off:0});
+assert.deepEqual(depthSamples,{weak:.375,deep:3,deepHalf:1.5,deepZero:0,off:0});
 assert.equal(evaluate("offensiveDepthExpectation({roster:[{bonus:5}]},12)"),0);
 assert.equal(evaluate("offensiveDepthExpectation({roster:[{bonus:8},{bonus:8},{bonus:8}]},12,{...state.settings,offensiveDepthStrength:2})"),2);
 const depthGameSample=JSON.parse(evaluate("(function(){\n state=initialState();state.settings.maxGoalsPerTeam=9;state.settings.offensiveDepthStrength=1;\n const create=(bonuses)=>({id:0,roster:bonuses.map((bonus,i)=>({id:100+i,bonus,motivation:0}))});\n const opponent={id:1,roster:[]};\n const run=(bonuses)=>{\n  const team=create(bonuses);let teamGF=0,oppGF=0,max=0,plays=0,otValid=true;\n  for(let i=0;i<2500;i++){\n   const g={rollA:10,rollB:5,totalA:18,totalB:13,coin:false,winnerId:0,stage:'regular'};\n   generateScore(team,opponent,g);\n   if(g.scoreA<=g.scoreB||g.scoreA>9||g.scoreB>9||g.goalEvents.length!==g.scoreA+g.scoreB)throw Error('Invalid depth score or game log');\n   teamGF+=g.scoreA;oppGF+=g.scoreB;max=Math.max(max,g.scoreA);plays+=g.goalEvents.length;\n  }\n  return {gf:teamGF/2500,ga:oppGF/2500,max,plays};\n };\n const low=run([8,1,1]),high=run([8,8,8]);\n const a=create([8,8,8]);let tied={rollA:12,rollB:12,totalA:20,totalB:20,coin:true,winnerId:1,stage:'regular'};\n generateScore(a,opponent,tied);const otValid=tied.scoreB-tied.scoreA===1;\n state.settings.maxGoalsPerTeam=15;\n let elevated={rollA:12,rollB:12,totalA:45,totalB:12,coin:false,winnerId:0,stage:'regular'};\n generateScore(a,opponent,elevated);\n return JSON.stringify({low,high,otValid,elevated:{a:elevated.scoreA,b:elevated.scoreB}});\n})()"));
@@ -198,7 +206,7 @@ console.log('PASS: Offensive Depth boost scales with raw roster and roll, retain
 
 // A rare scoring surge can create nine-goal games even between evenly
 // rated teams, without ever changing the victor or OT's one-goal margin.
-const surgeTest=JSON.parse(evaluate("(function(){const original=random;try{let seq=[.999,.999,.01,.999];random=()=>seq.length?seq.shift():.5;state=initialState();let a={id:0,roster:[]},b={id:1,roster:[]};let g={rollA:12,rollB:1,totalA:20,totalB:9,coin:false,winnerId:0,stage:'regular'};generateScore(a,b,g);return JSON.stringify({a:g.scoreA,b:g.scoreB,plays:g.goalEvents.length})}finally{random=original}})()"));
+const surgeTest=JSON.parse(evaluate("(function(){const original=random;try{let seq=[.999,.999,.01,.999];random=()=>seq.length?seq.shift():.5;state=initialState();state.settings.maxGoalsPerTeam=9;let a={id:0,roster:[]},b={id:1,roster:[]};let g={rollA:12,rollB:1,totalA:20,totalB:9,coin:false,winnerId:0,stage:'regular'};generateScore(a,b,g);return JSON.stringify({a:g.scoreA,b:g.scoreB,plays:g.goalEvents.length})}finally{random=original}})()"));
 assert.deepEqual(surgeTest,{a:9,b:3,plays:12});
 const overtimeScore=JSON.parse(evaluate("(function(){const original=random;try{random=()=>.999;let a={id:0,roster:[]},b={id:1,roster:[]};let g={rollA:12,rollB:12,totalA:20,totalB:20,coin:true,winnerId:1,stage:'playoff'};generateScore(a,b,g);return JSON.stringify({a:g.scoreA,b:g.scoreB,plays:g.goalEvents.length})}finally{random=original}})()"));
 assert.equal(overtimeScore.b-overtimeScore.a,1);
@@ -391,10 +399,10 @@ assert.match(evaluate("assistStatusHtml(70,40)"),/odds-invalid/);
 
 evaluate("view='settings';state=initialState();settings()");
 const settingsHtml=domNodes.app.innerHTML;
-assert.match(settingsHtml,/id="cfg-offensiveDepthStrength"[^>]*step="0.25"[^>]*value="1"/);
-assert.match(settingsHtml,/id="cfg-maxGoalsPerTeam"[^>]*value="9"/);
+assert.match(settingsHtml,/id="cfg-offensiveDepthStrength"[^>]*step="0.25"[^>]*value="3"/);
+assert.match(settingsHtml,/id="cfg-maxGoalsPerTeam"[^>]*value="15"/);
 assert.match(settingsHtml,/id="depth-preview"/);
-assert.match(domNodes['depth-preview'].textContent,/\+8 \/ \+8 \/ \+8 adding ~1\.00/);
+assert.match(domNodes['depth-preview'].textContent,/\+8 \/ \+8 \/ \+8 adding ~3\.00/);
 assert.match(settingsHtml,/Live scoring calculator/);
 assert.match(settingsHtml,/id="strength-goalExponent"/);
 assert.match(settingsHtml,/id="strength-assistExponent"/);
@@ -403,6 +411,13 @@ assert.match(settingsHtml,/data-scoring-preset="moderate"/);
 assert.match(settingsHtml,/data-scoring-preset="stars"/);
 assert.match(settingsHtml,/id="preview-rating-2"/);
 assert.match(settingsHtml,/id="preview-team-goals"/);
+
+
+// A saved older league may still have 1.0 / 9 and should show those actual
+// values instead of being silently changed to the latest new-league defaults.
+evaluate("state=initialState();state.settings.offensiveDepthStrength=1;state.settings.maxGoalsPerTeam=9;settings()");
+assert.match(domNodes.app.innerHTML,/id="cfg-offensiveDepthStrength"[^>]*value="1"/);
+assert.match(domNodes.app.innerHTML,/id="cfg-maxGoalsPerTeam"[^>]*value="9"/);
 
 const previewOdds=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,7],1.35,1.2,8,6,19))"));
 assert.ok(Math.abs(previewOdds.goals.reduce((a,b)=>a+b,0)-1)<1e-10);
