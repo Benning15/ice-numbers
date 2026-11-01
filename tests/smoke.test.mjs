@@ -197,3 +197,15 @@ assert.match(domNodes.app.innerHTML,/data-player="1005"/);
 evaluate("state=initialState();simulateSeason();beginSeason()");
 assert.equal(evaluate('state.seasonComplete'),false);
 console.log('PASS: V1.3 celebration, archives, old player stats, pagination and odds');
+
+
+// V1.3 clickable names also work in archived team rosters and goal/assist logs.
+const linkedRosters=evaluate("seasonRosterPanel(v13sim.result)");
+assert.match(linkedRosters,/Featured player rosters/);
+assert.match(linkedRosters,/data-player="/);
+const linkedPlay=evaluate("scoringPlayerLinks({scorerId:42,scorerName:'Test Scorer',assistIds:[77],assistNames:['Test Helper'],anonymousAssists:0,assistsCount:1})");
+assert.match(linkedPlay,/data-player="42"/);
+assert.match(linkedPlay,/data-player="77"/);
+const unnamedPlay=evaluate("scoringPlayerLinks({scorerId:null,scorerName:'Unnamed skater',assistIds:[],assistNames:[],anonymousAssists:0,assistsCount:0})");
+assert.doesNotMatch(unnamedPlay,/data-player/);
+console.log('PASS: historical roster and scoring-play player links');
