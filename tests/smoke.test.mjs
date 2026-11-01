@@ -112,6 +112,29 @@ const testBoundary=JSON.parse(evaluate("(function(){const saved=random;try{retur
 assert.deepEqual(testBoundary,[1,1,2,2,3,3]);
 console.log('PASS: new-universe 15/50/35 opening rosters, roster caps, archive logging, legacy state, later seasons');
 
+
+
+// Monte Carlo: each neutral +8 approaches one goal/game over independent
+// 30-game seasons whether their team has one or three +8 players.
+// Every goal event must still reconcile exactly to the published game score.
+const starBalance=JSON.parse(evaluate("(function(){\n const cases=[];\n for(const depth of [1,3])for(const starCount of [1,3])for(const rivalStars of [false,true]){\n  const sums=new Array(starCount).fill(0),examples=[];\n  for(let trial=0;trial<80;trial++){\n   state=initialState();state.rngState=123456+trial*1799;\n   state.settings.offensiveDepthStrength=depth;\n   state.settings.maxGoalsPerTeam=15;\n   state.teams[0].roster=Array.from({length:starCount},(_,i)=>({id:i+1,name:'Star '+i,bonus:8,motivation:0,regGoals:0,regAssists:0}));\n   state.teams[1].roster=(rivalStars?[8,8,8]:[2,2]).map((bonus,i)=>({id:10+i,name:'Rival '+i,bonus,motivation:0,regGoals:0,regAssists:0}));\n   for(let i=0;i<30;i++){\n    const records=[];\n    playGame(state.teams[0],state.teams[1],8,rivalStars?8:4,trial+1,'regular',0,0,i,records);\n    if(records[0].goalEvents.length!==records[0].scoreA+records[0].scoreB)throw Error('Goal event mismatch');\n   }\n   if(trial===0)examples.push(...state.teams[0].roster.map(p=>p.regGoals));\n   state.teams[0].roster.forEach((p,i)=>sums[i]+=p.regGoals);\n  }\n  cases.push({depth,starCount,rivalStars,mean:sums.map(n=>n/80),examples});\n }\n return JSON.stringify(cases);\n})()"));
+for(const item of starBalance){
+ // Equal elite rosters with lower depth can score <3 total goals/game;
+ // in that situation 3 goals/game across 3 stars is mathematically impossible.
+ const min=item.starCount===3&&item.rivalStars&&item.depth===1?26:27;
+ assert.ok(item.mean.every(n=>n>=min&&n<=34),JSON.stringify(item));
+ if(item.starCount===3)assert.ok(new Set(item.examples).size>1,'three stars must have different random goal totals');
+}
+const projectedStars=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,8],1.35,1.2,8,6,19,120,30))"));
+assert.ok(projectedStars.goals.slice(0,3).every(p=>Math.abs(p*120-30)<1e-8));
+assert.ok(Math.abs(projectedStars.goals.reduce((a,b)=>a+b,0)-1)<1e-9);
+const namedShare=JSON.parse(evaluate("(function(){state=initialState();state.settings.unnamedWeight=8;const p={id:1,bonus:8,motivation:0};const one={roster:[p],scoringGF:30,scoringGP:10};const trio={roster:[p,{...p,id:2},{...p,id:3}],scoringGF:40,scoringGP:10};return JSON.stringify({one:goalScorerPool(one),trio:goalScorerPool(trio)})})()"));
+const expectedOne=namedShare.one[1].weight/namedShare.one.reduce((n,p)=>n+p.weight,0);
+const expectedTrio=namedShare.trio[1].weight/namedShare.trio.reduce((n,p)=>n+p.weight,0);
+assert.ok(expectedOne>.25&&expectedOne<.4);
+assert.ok(expectedTrio>.20&&expectedTrio<.3);
+console.log('PASS: +8 target near 30 G in 30 GP on 1-star and 3-star teams, randomness and calibrated live preview');
+
 // Hidden Motivation: randomized per-player permanent ranges, annual rolls,
 // save/resume safety, stats-archive secrecy, and both goal/assist weighting.
 assert.equal(evaluate('MOTIVATION_RANGES.reduce((s,r)=>s+r[2],0)'),100);
