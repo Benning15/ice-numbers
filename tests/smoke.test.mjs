@@ -141,6 +141,31 @@ assert.ok(archiveMarkup.indexOf('data-year="23"')<archiveMarkup.indexOf('data-ye
 assert.match(archiveMarkup, /data-year="1"/);
 console.log('PASS: 23 franchise seasons retained in collapsible scrollable section');
 
+// All-time team strength adds every completed season's capped roster bonus.
+evaluate("state=initialState()");
+const historicalBonuses=JSON.parse(evaluate("JSON.stringify(teamBonusTotals([{season:1,standings:[{id:0,bonus:8},{id:1,bonus:1}]},{season:2,standings:[{id:0,bonus:8},{id:1,bonus:1}]}],null))"));
+assert.equal(historicalBonuses[0],16);
+assert.equal(historicalBonuses[1],2);
+assert.equal(historicalBonuses.length,16);
+const includesCurrent=JSON.parse(evaluate("JSON.stringify(teamBonusTotals([{season:1,standings:[{id:0,bonus:8}]}],{season:2,standings:[{id:0,bonus:5}]}))"));
+assert.equal(includesCurrent[0],13);
+const noDoubleCount=JSON.parse(evaluate("JSON.stringify(teamBonusTotals([{season:1,standings:[{id:0,bonus:8}]}],{season:1,standings:[{id:0,bonus:8}]}))"));
+assert.equal(noDoubleCount[0],8);
+sandbox.bonusFixture=[
+ {season:1,standings:[{id:0,bonus:8},{id:1,bonus:1}]},
+ {season:2,standings:[{id:0,bonus:8},{id:1,bonus:1}]}
+];
+evaluate("state=initialState();state.season=2;view='alltime';sortBy='teamBonusTotal';sortDescending=true;getAll=async store=>bonusFixture");
+await evaluate("alltime()");
+const alltimeBonusHtml=domNodes.app.innerHTML;
+assert.match(alltimeBonusHtml,/data-sort="teamBonusTotal"[^>]*>Total Team \+ ▼<\/th><\/tr>/);
+assert.match(alltimeBonusHtml,/capped regular-season roster bonus/);
+assert.ok(alltimeBonusHtml.indexOf('data-team="0"')<alltimeBonusHtml.indexOf('data-team="1"'));
+assert.match(alltimeBonusHtml,/<td>\+16<\/td><\/tr>/);
+assert.match(alltimeBonusHtml,/<td>\+2<\/td><\/tr>/);
+console.log('PASS: cumulative team bonuses display last, sort correctly, include active season and avoid double counting');
+
+
 
 // V1.3 regression suite: championship stage, archive, player careers, pagination, odds.
 evaluate("state=initialState();var v13sim=simulateSeason();view='playoffs'");
