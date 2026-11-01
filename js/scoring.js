@@ -12,7 +12,7 @@ function scoringPlay(team,stage,game,changed){
  const scorerPool=[{id:null,weight:state.settings.unnamedWeight??8},...players.map(p=>({id:p.id,weight:scoringWeight(p)}))];
  const scorerId=pickWeighted(scorerPool);
  let assisterIds=[],anonymousAssists=0;
- const unassisted=state.settings.unassistedPct??20,one=state.settings.oneAssistPct??45;
+ const unassisted=state.settings.unassistedPct??6,one=state.settings.oneAssistPct??19;
  const v=random()*100,numAssists=v<unassisted?0:v<unassisted+one?1:2;
  const candidates=players.filter(p=>p.id!==scorerId).map(p=>({id:p.id,weight:scoringWeight(p,true)}));
  for(let i=0;i<numAssists;i++){
