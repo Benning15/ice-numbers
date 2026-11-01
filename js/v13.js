@@ -87,3 +87,12 @@ function updateOddsTotals(){
   el.className='odds-status '+(valid?'odds-valid':'odds-invalid');
  }
 }
+
+function scoringPlayerLinks(play){
+ const scorer=play.scorerId===null||play.scorerId===undefined?esc(play.scorerName||'Unnamed skater'):'<button class="linkbtn" data-player="'+play.scorerId+'">'+esc(play.scorerName||'Unknown')+'</button>';
+ const ids=play.assistIds||[],names=play.assistNames||[];
+ const assists=ids.map((id,i)=>'<button class="linkbtn" data-player="'+id+'">'+esc(names[i]||'Player')+'</button>');
+ if(!ids.length&&names.length)assists.push(...names.map(esc));
+ for(let i=0;i<(play.anonymousAssists||0);i++)assists.push('Unnamed skater');
+ return scorer+(play.assistsCount?' — '+assists.join(', '):'');
+}
