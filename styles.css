@@ -54,3 +54,10 @@
 .odds-invalid{color:#f2a1a6;background:#321e28;border-color:#744550}
 @media(max-width:900px){.career-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.champion-name{flex-direction:column;gap:10px}.championship-history-scroll table{min-width:680px}.player-pages{justify-content:center}}
+
+.season-roster-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.season-roster-team{padding:12px;border:1px solid var(--stroke);border-radius:9px;min-width:0}
+.season-roster-team h3{font-size:12px;margin:0 0 9px}
+.season-roster-team .record{margin:5px 0}
+@media(max-width:1000px){.season-roster-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.season-roster-grid{grid-template-columns:1fr}}
