@@ -504,7 +504,8 @@ for(const [k,value] of Object.entries({
  'preview-rating-0':'8','preview-rating-1':'8','preview-rating-2':'7',
  'preview-target-0':'30','preview-target-1':'30','preview-target-2':'30',
  'preview-team-goals':'90'
-}))domNodes[k].value=value;
+})){domNodes[k]??={innerHTML:'',textContent:''};domNodes[k].value=value;}
+domNodes['preview-auto-goals']??={innerHTML:'',textContent:''};
 domNodes['preview-auto-goals'].checked=true;
 evaluate('state=initialState();updateScoringPreview()');
 const initialAuto=Number(domNodes['preview-team-goals'].value);
