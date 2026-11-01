@@ -65,3 +65,32 @@ assert.match(dashboard, /Simulate 1,000 Full Seasons/);
 const saved = evaluate('state=initialState();beginSeason();JSON.stringify({active:!!state.activeSeason,teams:state.activeSeason.standings.length})');
 assert.deepEqual(JSON.parse(saved), {active:true,teams:16});
 console.log('PASS: default teams, dashboards, player scoring, playoffs and resumable seasons');
+
+
+const playerFixture = [
+  {id:1, name:'Alex Alpha',teamId:0,regGoals:6,regAssists:2,playoffGoals:1,playoffAssists:1,regGames:10,titles:2,retireSeason:null},
+  {id:2, name:'Ben Bravo',teamId:1,regGoals:3,regAssists:6,playoffGoals:1,playoffAssists:4,regGames:20,titles:0,retireSeason:9},
+  {id:3, name:'Chris Charlie',teamId:2,regGoals:1,regAssists:1,playoffGoals:0,playoffAssists:0,regGames:5,titles:1,retireSeason:null}
+];
+sandbox.playerFixture = playerFixture;
+
+const sortPlayers = (key, descending) => evaluate(
+  '(function(){playerSort='+JSON.stringify(key)+';playerSortDescending='+descending+';return playerFixture.slice().sort(playerHistoryCompare).map(p=>p.id).join(",")})()'
+);
+assert.equal(sortPlayers('regGoals',true), '1,2,3');
+assert.equal(sortPlayers('regGoals',false), '3,2,1');
+assert.equal(sortPlayers('regPoints',true), '2,1,3');
+assert.equal(sortPlayers('careerPoints',true), '2,1,3');
+assert.equal(sortPlayers('pointsPerGame',true), '1,2,3');
+assert.equal(sortPlayers('name',false), '1,2,3');
+assert.equal(sortPlayers('titles',true), '1,3,2');
+assert.equal(sortPlayers('status',false), '1,3,2');
+assert.equal(evaluate('PLAYER_SORT_COLUMNS.length'),17);
+assert.match(evaluate("playerHeading('regGoals','G')"), /data-player-sort="regGoals"/);
+
+evaluate("render=()=>{};playerSort='regGoals';playerSortDescending=true;handleClick({target:{closest:(selector)=>selector==='th[data-player-sort]'?{dataset:{playerSort:'regGoals'}}:null}})");
+assert.equal(evaluate('playerSortDescending'), false);
+evaluate("handleClick({target:{closest:(selector)=>selector==='th[data-player-sort]'?{dataset:{playerSort:'regAssists'}}:null}})");
+assert.equal(evaluate('playerSort'), 'regAssists');
+assert.equal(evaluate('playerSortDescending'), true);
+console.log('PASS: all Player History sort fields, both directions, and heading click handlers');
