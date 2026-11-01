@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.9**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.10**.
 
 ## Project files
 
@@ -30,6 +30,14 @@ Before publishing changes:
 
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
+
+## Randomized starting rosters (V1.3.10)
+
+In a **brand-new universe**, the first Season 1 simulation generates **1–3 players for every team** with 15% / 50% / 35% probability. Every starting player uses the existing regular player-generation rating odds (not boosted draft odds), randomly receives their starting career year, and gets the usual hidden Motivation range and annual roll. Starting rosters are capped by the configured maximum roster size, so a custom roster limit of 1 or 2 is honoured.
+
+Season 1 **does not add another regular player spawn** after constructing opening rosters. Beginning with Season 2, annual player spawning and the usual last-place draft work as before. Player creation events and season rosters are archived as usual.
+
+The feature uses an explicit, new-universe-only initialization flag, so existing saved leagues—including those still in Season 1 or already centuries old—keep their current rosters and past results. Nothing is added retroactively, and old saved states without the flag retain their former first-season behavior.
 
 ## Individual Seasons leaderboard (V1.3.9)
 
