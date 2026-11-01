@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.14**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.15**.
 
 ## Project files
 
@@ -30,6 +30,12 @@ Before publishing changes:
 
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
+
+## Set as Default settings (V1.3.15)
+
+The Settings page has a **Set as Default** button next to **Save All Settings** in the sticky toolbar. It validates and saves all current Settings-page values to the **current league**, then stores a separate copy as the preferred **default for future new universes in this browser**. The current league's players, statistics, history, and schedule remain intact. You cannot edit settings mid-playoffs, including setting defaults.
+
+Browser-local default settings are kept in a separate IndexedDB `meta` record (`customSettingsDefaults`) and applied when a new league is created through **Start a new universe**, or when the application creates its initial league in that browser. Resetting a league or importing a backup preserves the local defaults record. Existing saved leagues and imported universes retain their own settings instead of being overwritten. These preferences are **not shared automatically across browsers or devices**, and are not embedded in full-league backup JSON files. Saving with **Set as Default** again replaces the previous preferred settings. Built-in defaults remain unchanged in `js/core.js`.
 
 ## Player career scoring ceiling (V1.3.14)
 
