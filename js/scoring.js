@@ -44,7 +44,7 @@ function scoringWeight(p,assist=false){const effective=Math.max(0,p.bonus+(Numbe
 // roster has one star or three. Actual individual years still vary through
 // random goal draws, hidden Motivation, team goal supply, and opponents.
 // The team's realized goals-per-game estimate is learned over the season;
-// a small five-game prior prevents the first game's probabilities from being
+// a small two-game prior prevents the first game's probabilities from being
 // dictated by a single outlier. This only changes WHO scores, not game scores.
 function individualGoalRate(p,goalExponent=state.settings.goalExponent??1.35){
  const effective=Math.max(0,p.bonus+(Number.isInteger(p.motivation)?p.motivation:0));
@@ -56,7 +56,7 @@ function scoringGoalsEstimate(team,settings=state.settings){
  const startingEstimate=3+Math.min(3,depth/16*strength*.5);
  const gp=Math.max(0,Number(team.scoringGP||0));
  const gf=Math.max(0,Number(team.scoringGF||0));
- return (startingEstimate*5+gf)/(5+gp);
+ return (startingEstimate*2+gf)/(2+gp);
 }
 function goalScorerPool(team,settings=state.settings){
  const featured=team.roster.map(p=>({id:p.id,weight:individualGoalRate(p,settings.goalExponent??1.35)}));
