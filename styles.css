@@ -66,6 +66,7 @@
 /* V1.3 settings usability: one clear Save All control for every section. */
 .settings-savebar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:12;background:#14243a;border:1px solid #416179;border-radius:12px;padding:12px 16px;margin-bottom:16px;box-shadow:0 6px 20px #0005}
 .settings-savebar button,.settings-bottom-save button{min-height:42px}
+.settings-savebar .buttonrow{margin-top:0;align-items:center}
 .settings-bottom-save{display:flex;align-items:center;gap:13px;flex-wrap:wrap;border-top:1px solid var(--stroke);padding-top:15px;margin-top:20px}
 @media(max-width:650px){.settings-savebar{padding:11px}.settings-savebar button{width:100%}}
 
