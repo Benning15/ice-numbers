@@ -96,3 +96,12 @@ function scoringPlayerLinks(play){
  for(let i=0;i<(play.anonymousAssists||0);i++)assists.push('Unnamed skater');
  return scorer+(play.assistsCount?' — '+assists.join(', '):'');
 }
+
+function seasonRosterPanel(s){
+ const rosters=s.rosters||{};
+ const blocks=state.teams.map(t=>{
+  const players=rosters[t.id]||[];
+  return '<div class="season-roster-team"><h3>'+teamLink(t.id)+'</h3>'+(players.length?players.map(p=>'<p class="record">'+playerLink(p)+' <span class="sub tiny">+'+p.bonus+'</span></p>').join(''):'<p class="sub tiny">No featured players</p>')+'</div>';
+ }).join('');
+ return '<div class="panel"><details><summary>Featured player rosters — Season '+s.season+'</summary><p class="sub tiny" style="margin:10px 0">Rosters at the start of the season. Click any player for their complete career.</p><div class="season-roster-grid">'+blocks+'</div></details></div>';
+}
