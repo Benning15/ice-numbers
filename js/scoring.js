@@ -26,11 +26,30 @@ function rollPlayerMotivation(p,season){
  p.motivationSeason=season;
  return true;
 }
+// Each player has their own hidden long-term goal-scoring tendency.
+// It begins at 25–35 goals per 30 games for a neutral +8 and can move
+// by -2, -1, 0, +1 or +2 at most once per new season (configurable max).
+// These are probabilistic rates, never scripted or guaranteed goal counts.
+const PERSONAL_GOAL_TARGET_MIN=25,PERSONAL_GOAL_TARGET_MAX=35;
+function advancePersonalGoalTarget(p,season,settings=state.settings){
+ if(p.goalTargetSeason===season)return false;
+ if(!Number.isInteger(p.goalTarget)||p.goalTarget<PERSONAL_GOAL_TARGET_MIN||p.goalTarget>PERSONAL_GOAL_TARGET_MAX){
+  // Legacy players only receive a target at the NEXT season boundary;
+  // their active saved playoff season stays unchanged.
+  p.goalTarget=randint(PERSONAL_GOAL_TARGET_MIN,PERSONAL_GOAL_TARGET_MAX);
+ }else{
+  const maximum=Math.max(0,Math.min(2,Number(settings.goalTargetAnnualChange??DEFAULTS.goalTargetAnnualChange)));
+  p.goalTarget=Math.max(PERSONAL_GOAL_TARGET_MIN,Math.min(PERSONAL_GOAL_TARGET_MAX,p.goalTarget+randint(-maximum,maximum)));
+ }
+ p.goalTargetSeason=season;
+ return true;
+}
 function newPlayer(teamId,origin,season){
  const s=state.settings,[min,max]=motivationRange();
  return {id:state.nextPlayerId++,teamId,name:FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)],bonus:weighted(origin==='draft'?s.draftWeights:s.normalWeights),
  startingYear:origin==='draft'?1:randint(1,s.careerLength),year:0,origin,joinSeason:season,retireSeason:null,
  motivationMin:min,motivationMax:max,motivation:0,motivationSeason:null,
+ goalTarget:randint(PERSONAL_GOAL_TARGET_MIN,PERSONAL_GOAL_TARGET_MAX),goalTargetSeason:season,
  seasons:0,regGames:0,regWins:0,regLosses:0,regOTL:0,regGoals:0,regAssists:0,playoffGoals:0,playoffAssists:0,playoffGames:0,playoffWins:0,playoffLosses:0,titles:0,history:[]};
 }
 function makeNewPlayer(teamId,origin,season){let p=newPlayer(teamId,origin,season);p.year=p.startingYear;return p}
@@ -40,7 +59,7 @@ function clamp(x,lo,hi){return Math.max(lo,Math.min(hi,x))}
 function ensurePlayer(p){for(const key of ['regGoals','regAssists','regOTL','playoffGoals','playoffAssists','regGames','regWins','regLosses','playoffGames','playoffWins','playoffLosses','seasons','titles'])p[key]??=0;return p}
 function pickWeighted(items){let sum=items.reduce((z,i)=>z+i.weight,0),v=random()*sum;for(const item of items){v-=item.weight;if(v<0)return item.id}return items[items.length-1].id}
 function scoringWeight(p,assist=false){const effective=Math.max(0,p.bonus+(Number.isInteger(p.motivation)?p.motivation:0));return Math.pow(effective+1,assist?(state.settings.assistExponent??1.2):(state.settings.goalExponent??1.35))}
-// Neutral +8 target: one expected goal per game, regardless of whether the
+// Neutral +8 population target: an average of one goal per game, regardless of whether the
 // roster has one star or three. Actual individual years still vary through
 // random goal draws, hidden Motivation, team goal supply, and opponents.
 // The team's realized goals-per-game estimate is learned over the season;
@@ -48,7 +67,7 @@ function scoringWeight(p,assist=false){const effective=Math.max(0,p.bonus+(Numbe
 // dictated by a single outlier. This only changes WHO scores, not game scores.
 function individualGoalRate(p,goalExponent=state.settings.goalExponent??1.35){
  const effective=Math.max(0,p.bonus+(Number.isInteger(p.motivation)?p.motivation:0));
- return Math.pow((effective+1)/9,goalExponent);
+ return Math.pow((effective+1)/9,goalExponent)*(Number.isInteger(p.goalTarget)?p.goalTarget:30)/30;
 }
 function scoringGoalsEstimate(team,settings=state.settings){
  const strength=Math.max(0,Number(settings.offensiveDepthStrength??DEFAULTS.offensiveDepthStrength));
