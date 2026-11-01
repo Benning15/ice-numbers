@@ -29,14 +29,15 @@ function rollPlayerMotivation(p,season){
 // Each player has their own hidden long-term goal-scoring tendency.
 // It begins at 25–35 goals per 30 games for a neutral +8 and can move
 // by -2, -1, 0, +1 or +2 at most once per new season (configurable max).
+// New players start at 25–35, but may develop as high as 40 over time.
 // These are probabilistic rates, never scripted or guaranteed goal counts.
-const PERSONAL_GOAL_TARGET_MIN=25,PERSONAL_GOAL_TARGET_MAX=35;
+const PERSONAL_GOAL_TARGET_MIN=25,PERSONAL_GOAL_TARGET_START_MAX=35,PERSONAL_GOAL_TARGET_MAX=40;
 function advancePersonalGoalTarget(p,season,settings=state.settings){
  if(p.goalTargetSeason===season)return false;
  if(!Number.isInteger(p.goalTarget)||p.goalTarget<PERSONAL_GOAL_TARGET_MIN||p.goalTarget>PERSONAL_GOAL_TARGET_MAX){
   // Legacy players only receive a target at the NEXT season boundary;
   // their active saved playoff season stays unchanged.
-  p.goalTarget=randint(PERSONAL_GOAL_TARGET_MIN,PERSONAL_GOAL_TARGET_MAX);
+  p.goalTarget=randint(PERSONAL_GOAL_TARGET_MIN,PERSONAL_GOAL_TARGET_START_MAX);
  }else{
   const maximum=Math.max(0,Math.min(2,Number(settings.goalTargetAnnualChange??DEFAULTS.goalTargetAnnualChange)));
   p.goalTarget=Math.max(PERSONAL_GOAL_TARGET_MIN,Math.min(PERSONAL_GOAL_TARGET_MAX,p.goalTarget+randint(-maximum,maximum)));
@@ -49,7 +50,7 @@ function newPlayer(teamId,origin,season){
  return {id:state.nextPlayerId++,teamId,name:FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)],bonus:weighted(origin==='draft'?s.draftWeights:s.normalWeights),
  startingYear:origin==='draft'?1:randint(1,s.careerLength),year:0,origin,joinSeason:season,retireSeason:null,
  motivationMin:min,motivationMax:max,motivation:0,motivationSeason:null,
- goalTarget:randint(PERSONAL_GOAL_TARGET_MIN,PERSONAL_GOAL_TARGET_MAX),goalTargetSeason:season,
+ goalTarget:randint(PERSONAL_GOAL_TARGET_MIN,PERSONAL_GOAL_TARGET_START_MAX),goalTargetSeason:season,
  seasons:0,regGames:0,regWins:0,regLosses:0,regOTL:0,regGoals:0,regAssists:0,playoffGoals:0,playoffAssists:0,playoffGames:0,playoffWins:0,playoffLosses:0,titles:0,history:[]};
 }
 function makeNewPlayer(teamId,origin,season){let p=newPlayer(teamId,origin,season);p.year=p.startingYear;return p}
