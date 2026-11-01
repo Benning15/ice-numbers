@@ -17,7 +17,7 @@ function scoringPreviewOdds(ratings,goalExponent,assistExponent,unnamedWeight,un
  const assists=[0,0,0,0];
  const probabilities=[unassistedPct/100,oneAssistPct/100,(100-unassistedPct-oneAssistPct)/100];
  for(let scorer=0;scorer<4;scorer++){
-   const eligible=[0,1,2,3].filter(j=>j!==scorer);
+   const eligible=[0,1,2,3].filter(j=>j!==scorer||j===3);
    const total1=eligible.reduce((sum,j)=>sum+assistWeights[j],0);
    for(const first of eligible){
      const firstProbability=assistWeights[first]/total1;
