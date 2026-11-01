@@ -94,3 +94,17 @@ evaluate("handleClick({target:{closest:(selector)=>selector==='th[data-player-so
 assert.equal(evaluate('playerSort'), 'regAssists');
 assert.equal(evaluate('playerSortDescending'), true);
 console.log('PASS: all Player History sort fields, both directions, and heading click handlers');
+
+
+// Regression: Player History headers must be a single row of real <th> cells.
+// The previous bug wrapped already-rendered <th> markup in additional <th> cells.
+const playerHeaders = evaluate("table(PLAYER_SORT_COLUMNS.map(([k,l])=>playerHeading(k,l)), ['<tr>'+PLAYER_SORT_COLUMNS.map(()=>'<td>1</td>').join('')+'</tr>'],true)");
+assert.equal((playerHeaders.match(/<th\b/g)||[]).length, 17);
+assert.equal((playerHeaders.match(/<\/th>/g)||[]).length, 17);
+assert.equal((playerHeaders.match(/<td\b/g)||[]).length, 17);
+assert.doesNotMatch(playerHeaders, /<th[^>]*>\s*<th\b/i);
+assert.match(playerHeaders, /<th[^>]*data-player-sort="regGoals"/);
+const ordinaryTable = evaluate("table(['Team','GP'],['<tr><td>A</td><td>2</td></tr>'])");
+assert.equal((ordinaryTable.match(/<th\b/g)||[]).length,2);
+assert.match(ordinaryTable, /<th>Team<\/th><th>GP<\/th>/);
+console.log('PASS: Player History headings align with exactly 17 data columns');
