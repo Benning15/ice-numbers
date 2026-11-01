@@ -41,13 +41,13 @@ function scoringPreviewOdds(ratings,goalExponent,assistExponent,unnamedWeight,un
 }
 function scoringPreviewMarkup(s){
  const ratings=[8,8,7];
- const select=(v,i)=>'<div class="control"><label for="preview-rating-'+i+'">Player '+('ABC'[i])+' rating</label><select id="preview-rating-'+i+'" class="select" data-preview-rating="'+i+'">'+Array.from({length:8},(_,j)=>'<option value="'+(j+1)+'" '+(j+1===v?'selected':'')+'>+'+(j+1)+'</option>').join('')+'</select></div>'+ '<div class="control"><label for="preview-target-'+i+'">Player '+('ABC'[i])+' example target: <strong id="preview-target-label-'+i+'">30</strong></label><input id="preview-target-'+i+'" type="range" min="25" max="35" step="1" value="30" aria-label="Player '+('ABC'[i])+' example personal goal target"></div>';
+ const select=(v,i)=>'<div class="control"><label for="preview-rating-'+i+'">Player '+('ABC'[i])+' rating</label><select id="preview-rating-'+i+'" class="select" data-preview-rating="'+i+'">'+Array.from({length:8},(_,j)=>'<option value="'+(j+1)+'" '+(j+1===v?'selected':'')+'>+'+(j+1)+'</option>').join('')+'</select></div>'+ '<div class="control"><label for="preview-target-'+i+'">Player '+('ABC'[i])+' example target: <strong id="preview-target-label-'+i+'">30</strong></label><input id="preview-target-'+i+'" type="range" min="25" max="40" step="1" value="30" aria-label="Player '+('ABC'[i])+' example personal goal target"></div>';
  return '<section class="scoring-preview" aria-label="Live scoring calculator">'+
   '<h3>Live scoring calculator</h3>'+
   '<p class="help">Choose a three-player roster to see who receives goals and assists. This is a preview only — it does not generate players or change game results. Personal goal target sliders below are examples, not edits to real players. Actual targets stay hidden and shift gradually each season. Neutral Motivation (0) is assumed.</p>'+
   '<div class="scoring-preview-controls">'+ratings.map(select).join('')+
   '<div class="control"><label for="preview-team-goals">Assumed team goals in season</label><input type="number" id="preview-team-goals" min="1" max="2000" step="1" value="'+(s.gamesPerTeam*3)+'"></div></div>'+
-  '<p class="help">Team goals are an assumption, not a forecast. Different players have hidden 25–35 goal targets per 30 games (population average 30), adjusted each new season. These sliders show hypothetical examples only; actual scoring depends on team goals, Motivation and luck.</p>'+
+  '<p class="help">Team goals are an assumption, not a forecast. Players start with hidden targets of 25–35 per 30 games (mean 30), then can gradually move as high as 40 over their careers. These sliders show hypothetical examples only; actual scoring depends on team goals, Motivation and luck.</p>'+
   '<div class="scoring-presets"><span class="sub tiny">Quick presets:</span>'+
   '<button type="button" data-scoring-preset="balanced">Balanced</button>'+
   '<button type="button" data-scoring-preset="moderate">Moderate</button>'+
@@ -85,7 +85,7 @@ function updateScoringPreview(){
    output.innerHTML='<p class="odds-status odds-invalid">Check the goal/assist strength, probabilities, roster ratings and team-goal assumption.</p>';return;
  }
  const ratings=ratingEls.map(e=>Number(e.value));
- const personalTargets=[0,1,2].map(i=>{const value=Number($('preview-target-'+i)?.value);const target=Number.isInteger(value)&&value>=25&&value<=35?value:30;const label=$('preview-target-label-'+i);if(label)label.textContent=String(target);return target});
+ const personalTargets=[0,1,2].map(i=>{const value=Number($('preview-target-'+i)?.value);const target=Number.isInteger(value)&&value>=25&&value<=40?value:30;const label=$('preview-target-label-'+i);if(label)label.textContent=String(target);return target});
  const result=scoringPreviewOdds(ratings,goalExp,assistExp,unnamed,zero,one,teamGoals,Number($('cfg-gamesPerTeam')?.value)||state.settings.gamesPerTeam,personalTargets);
  const items=ratings.map((r,i)=>({name:'Player '+('ABC'[i])+' (+'+r+', target '+personalTargets[i]+')',i})).concat({name:'Unnamed skaters',i:3});
  const rows=items.map(({name,i})=>{
@@ -98,7 +98,7 @@ function updateScoringPreview(){
  output.innerHTML='<p class="sub tiny">Projected scoring across <b>'+fmt(teamGoals)+'</b> team goals &middot; '+result.assistsPerGoal.toFixed(2)+' assists per goal</p>'+
   '<div class="tablewrap"><table class="preview-table"><thead><tr><th>Scorer</th><th>Goal chance</th><th>Goals</th><th>Assists</th><th>Points</th></tr></thead>'+
   '<tbody>'+rows+'</tbody></table></div>'+
-  '<p class="help">A neutral +8 has a personal hidden goal target in the 25–35 range, averaging 30 across players. Sliders here only explore hypothetical player tendencies; their real values are never shown. When expected team scoring is too low to support all featured goal targets, the goals must be shared. A scorer cannot assist their own goal, and each named player can earn at most one assist per goal. This is a mathematical preview, not a guaranteed result.</p>';
+  '<p class="help">A neutral +8 starts with a hidden personal target in the 25–35 range, averaging 30 across new players, and may develop as high as 40. Sliders here only explore hypothetical player tendencies; their real values are never shown. When expected team scoring is too low to support all featured goal targets, the goals must be shared. A scorer cannot assist their own goal, and each named player can earn at most one assist per goal. This is a mathematical preview, not a guaranteed result.</p>';
 }
 function applyScoringPreset(name){
  const values=SCORING_PRESETS[name];
