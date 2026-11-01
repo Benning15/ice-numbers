@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.11**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.12**.
 
 ## Project files
 
@@ -31,6 +31,12 @@ Before publishing changes:
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
 
+## Default scoring calibration (V1.3.12)
+
+**New universes** now default to **Offensive Depth Strength 3.0** and a **15-goal maximum per team per game**—the settings used when testing the +8 player goal target. The maximum Offensive Depth strength remains 3.0 (in 0.25 increments), and players can still select lower settings or switch the depth mechanic off.
+
+**Saved universes are not changed.** Their stored strength and cap remain as selected. For much older saves that predate these two settings, the pre-existing fallback of strength 1.0 and cap 9 is explicitly preserved on load, while new universes start with 3.0 and 15.
+
 ## Goal distribution balancing (V1.3.11)
 
 A player with a displayed **+8 rating and neutral (0) hidden Motivation** now targets about **1 goal per team game**: approximately 30 goals over a 30-game regular season, independent of whether their team features one +8 player or three. This is an expected goal rate, **not an enforced minimum or fixed 30-goal outcome**. Individual seasons vary through random scorer selections, hidden year-specific Motivation and team scoring opportunities.
@@ -59,9 +65,9 @@ Season performances are reconstructed from stored rosters and actual scoring-pla
 
 ## Offensive Depth (V1.3.8)
 
-Uncapped roster bonuses above the configured team winning cap create *extra scoring opportunities*, especially on higher original team rolls. With Offensive Depth Strength at 1 (default), each 16 uncapped points above the capped winning bonus is worth one expected extra goal on a maximum roll, or half a goal on a half-size roll, before the score ceiling. This affects final goal totals in both regular season and playoffs, but not the underlying adjusted rolls used to determine the winner.
+Uncapped roster bonuses above the configured team winning cap create *extra scoring opportunities*, especially on higher original team rolls. At Offensive Depth Strength 1 (the original default), each 16 uncapped points above the capped winning bonus is worth one expected extra goal on a maximum roll, or half a goal on a half-size roll, before the score ceiling. This affects final goal totals in both regular season and playoffs, but not the underlying adjusted rolls used to determine the winner.
 
-The Settings page exposes **Offensive Depth Strength** from 0 (off / old scoring behavior) to 3 in 0.25 steps, with a live example of +8/+1/+1 vs +8/+8/+8. **Maximum team goals in a game** defaults to 9 and is adjustable up to 15. Non-overtime winners always have more goals, and coin-flip overtime finishes remain one-goal games. All goal events, assists, player totals and archives are recorded for extra goals normally. Previous seasons are unchanged; new settings apply to future seasons only.
+The Settings page exposes **Offensive Depth Strength** from 0 (off / old scoring behavior) to 3 in 0.25 steps, with a live example of +8/+1/+1 vs +8/+8/+8. **Maximum team goals in a game** originally defaulted to 9 and is adjustable from 9 to 15; since V1.3.12, new universes start at 15. Non-overtime winners always have more goals, and coin-flip overtime finishes remain one-goal games. All goal events, assists, player totals and archives are recorded for extra goals normally. Previous seasons are unchanged; new settings apply to future seasons only.
 
 ## Hidden Motivation (V1.3.7)
 
