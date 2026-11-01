@@ -29,7 +29,12 @@ function generateScore(a,b,g,changed){
  let margin;
  if(g.coin)margin=1;
  else{const difference=Math.abs(g.totalA-g.totalB);margin=clamp(Math.round(difference/3.8+(random()-.5)*1.7),1,7)}
- const winningGoals=clamp(losingGoals+margin,1,11);
+ // Nine goals is the ceiling. Very rarely, a team already on 7 or 8
+ // goals has a scoring surge of 1–3 extra goals. Keep OT games at +1.
+ let winningGoals=clamp(losingGoals+margin,1,9);
+ if(!g.coin&&winningGoals>=7&&winningGoals<9&&random()<.05){
+   winningGoals=Math.min(9,winningGoals+randint(1,3));
+ }
  g.scoreA=g.winnerId===a.id?winningGoals:losingGoals;
  g.scoreB=g.winnerId===b.id?winningGoals:losingGoals;
  g.ot=g.coin;
