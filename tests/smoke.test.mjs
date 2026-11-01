@@ -76,12 +76,48 @@ const saved = evaluate('state=initialState();beginSeason();JSON.stringify({activ
 assert.deepEqual(JSON.parse(saved), {active:true,teams:16});
 console.log('PASS: default teams, dashboards, player scoring, playoffs and resumable seasons');
 
+
+// First year of a BRAND NEW universe initializes randomized opening rosters,
+// not the old single-spawn format. Existing universes must not be affected.
+assert.equal(evaluate('initialState().openingRostersPending'),true);
+const opening=JSON.parse(evaluate("(function(){state=initialState();const sim=beginSeason();return JSON.stringify({counts:state.teams.map(t=>t.roster.length),archived:Object.values(state.activeSeason.rosters).map(r=>r.length),spawnEvents:state.activeSeason.events.filter(x=>x.includes('spawned')),openingEvents:state.activeSeason.events.filter(x=>x.includes('started with')).length,ids:state.teams.flatMap(t=>t.roster.map(p=>p.id)),persisted:state.openingRostersPending,years:state.teams.flatMap(t=>t.roster.map(p=>p.year)),motivation:state.teams.flatMap(t=>t.roster.map(p=>p.motivationSeason))})})()"));
+assert.equal(opening.counts.length,16);
+assert.ok(opening.counts.every(n=>n>=1&&n<=3));
+assert.deepEqual(opening.counts,opening.archived);
+assert.equal(opening.spawnEvents.length,0);
+assert.equal(opening.openingEvents,opening.ids.length);
+assert.equal(new Set(opening.ids).size,opening.ids.length);
+assert.equal(opening.persisted,false);
+assert.ok(opening.years.every(y=>y>=1&&y<=5));
+assert.ok(opening.motivation.every(y=>y===1));
+for(const maxRoster of [1,2,3]){
+ const counts=JSON.parse(evaluate("(function(){state=initialState();state.settings.maxRoster="+maxRoster+";beginSeason();return JSON.stringify(state.teams.map(t=>t.roster.length))})()"));
+ assert.ok(counts.every(n=>n>=1&&n<=maxRoster));
+}
+const oldUniverse=JSON.parse(evaluate("(function(){state=initialState();delete state.openingRostersPending;beginSeason();return JSON.stringify({sizes:state.teams.map(t=>t.roster.length),normal:state.activeSeason.events.filter(x=>x.includes('spawned')).length})})()"));
+assert.ok(oldUniverse.sizes.every(n=>n===1));
+assert.equal(oldUniverse.normal,16);
+const manualFirstSeason=JSON.parse(evaluate("(function(){state=initialState();const p=makeNewPlayer(0,'spawn',1);state.teams[0].roster=[p];beginSeason();return JSON.stringify({first:state.teams[0].roster.length,others:state.teams.slice(1).map(t=>t.roster.length),opening:state.openingRostersPending})})()"));
+assert.equal(manualFirstSeason.first,2);
+assert.ok(manualFirstSeason.others.every(n=>n===1));
+assert.equal(manualFirstSeason.opening,false);
+// Verify that after Season 1, the legacy draft/normal annual spawning
+// mechanics continue instead of running opening-roster generation again.
+const seasonTwo=JSON.parse(evaluate("(function(){state=initialState();const first=simulateSeason(),rosterCount=Object.fromEntries(Object.entries(first.result.rosters).map(([id,r])=>[id,r.length]));const second=beginSeason();return JSON.stringify({flag:state.openingRostersPending,first:rosterCount,second:Object.values(state.activeSeason.rosters).map(r=>r.length),draftEvents:state.activeSeason.events.filter(x=>x.includes('drafted')).length,openingEvents:state.activeSeason.events.filter(x=>x.includes('started with')).length})})()"));
+assert.equal(seasonTwo.flag,false);
+assert.equal(seasonTwo.draftEvents,1);
+assert.equal(seasonTwo.openingEvents,0);
+// Distribution boundaries: a single RNG draw selects 1/2/3 at 15/50/35%.
+const testBoundary=JSON.parse(evaluate("(function(){const saved=random;try{return JSON.stringify([0,.149999,.15,.64999,.65,.99999].map(x=>{random=()=>x;return weighted([15,50,35])}))}finally{random=saved}})()"));
+assert.deepEqual(testBoundary,[1,1,2,2,3,3]);
+console.log('PASS: new-universe 15/50/35 opening rosters, roster caps, archive logging, legacy state, later seasons');
+
 // Hidden Motivation: randomized per-player permanent ranges, annual rolls,
 // save/resume safety, stats-archive secrecy, and both goal/assist weighting.
 assert.equal(evaluate('MOTIVATION_RANGES.reduce((s,r)=>s+r[2],0)'),100);
 assert.ok(evaluate('MOTIVATION_RANGES.every(([min,max])=>min>=-2&&max<=2&&min<=max)'));
 const motCreated=JSON.parse(evaluate("(function(){state=initialState();beginSeason();return JSON.stringify(state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,min:p.motivationMin,max:p.motivationMax,m:p.motivation,year:p.motivationSeason})))})()"));
-assert.equal(motCreated.length,16);
+assert.ok(motCreated.length>=16&&motCreated.length<=48);
 assert.ok(motCreated.every(p=>p.min>=-2&&p.max<=2&&p.m>=p.min&&p.m<=p.max&&p.year===1));
 const motNewSeason=JSON.parse(evaluate("(function(){state=initialState();var sim=simulateSeason();const old=state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,min:p.motivationMin,max:p.motivationMax,season:p.motivationSeason}));beginSeason();return JSON.stringify({old,now:state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,min:p.motivationMin,max:p.motivationMax,m:p.motivation,season:p.motivationSeason})),publicRosters:state.activeSeason.rosters,publicHistory:sim.result.rosters})})()"));
 assert.ok(motNewSeason.old.length>0);
