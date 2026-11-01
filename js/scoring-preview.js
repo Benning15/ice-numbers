@@ -40,7 +40,7 @@ function scoringPreviewMarkup(s){
  const select=(v,i)=>'<div class="control"><label for="preview-rating-'+i+'">Player '+('ABC'[i])+'</label><select id="preview-rating-'+i+'" class="select" data-preview-rating="'+i+'">'+Array.from({length:8},(_,j)=>'<option value="'+(j+1)+'" '+(j+1===v?'selected':'')+'>+'+(j+1)+'</option>').join('')+'</select></div>';
  return '<section class="scoring-preview" aria-label="Live scoring calculator">'+
   '<h3>Live scoring calculator</h3>'+
-  '<p class="help">Choose a three-player roster to see who receives goals and assists. This is a preview only — it does not generate players or change game results.</p>'+
+  '<p class="help">Choose a three-player roster to see who receives goals and assists. This is a preview only — it does not generate players or change game results. It assumes neutral (0) Motivation; real players have hidden seasonal adjustments.</p>'+
   '<div class="scoring-preview-controls">'+ratings.map(select).join('')+
   '<div class="control"><label for="preview-team-goals">Assumed team goals in season</label><input type="number" id="preview-team-goals" min="1" max="2000" step="1" value="'+(s.gamesPerTeam*3)+'"></div></div>'+
   '<p class="help">For example, 90 team goals over 30 games. This is an assumption for the preview, not a forecast.</p>'+
@@ -93,7 +93,7 @@ function updateScoringPreview(){
  output.innerHTML='<p class="sub tiny">Projected scoring across <b>'+fmt(teamGoals)+'</b> team goals &middot; '+result.assistsPerGoal.toFixed(2)+' assists per goal</p>'+
   '<div class="tablewrap"><table class="preview-table"><thead><tr><th>Scorer</th><th>Goal chance</th><th>Goals</th><th>Assists</th><th>Points</th></tr></thead>'+
   '<tbody>'+rows+'</tbody></table></div>'+
-  '<p class="help">Goals are assigned first. The goal scorer cannot earn an assist on that goal, and each featured player can receive at most one assist per goal. Numbers are mathematical expectations, not guaranteed season totals; roster/team goal assumptions are only for this preview.</p>';
+  '<p class="help">Goals are assigned first. The goal scorer cannot earn an assist on that goal, and each featured player can receive at most one assist per goal. Numbers are mathematical expectations at neutral Motivation, not guaranteed season totals. Actual players may score more or less because of hidden seasonal Motivation; roster/team goal assumptions are only for this preview.</p>';
 }
 function applyScoringPreset(name){
  const values=SCORING_PRESETS[name];
