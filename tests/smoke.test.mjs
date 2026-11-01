@@ -76,6 +76,49 @@ const saved = evaluate('state=initialState();beginSeason();JSON.stringify({activ
 assert.deepEqual(JSON.parse(saved), {active:true,teams:16});
 console.log('PASS: default teams, dashboards, player scoring, playoffs and resumable seasons');
 
+// Hidden Motivation: randomized per-player permanent ranges, annual rolls,
+// save/resume safety, stats-archive secrecy, and both goal/assist weighting.
+assert.equal(evaluate('MOTIVATION_RANGES.reduce((s,r)=>s+r[2],0)'),100);
+assert.ok(evaluate('MOTIVATION_RANGES.every(([min,max])=>min>=-2&&max<=2&&min<=max)'));
+const motCreated=JSON.parse(evaluate("(function(){state=initialState();beginSeason();return JSON.stringify(state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,min:p.motivationMin,max:p.motivationMax,m:p.motivation,year:p.motivationSeason})))})()"));
+assert.equal(motCreated.length,16);
+assert.ok(motCreated.every(p=>p.min>=-2&&p.max<=2&&p.m>=p.min&&p.m<=p.max&&p.year===1));
+const motNewSeason=JSON.parse(evaluate("(function(){state=initialState();var sim=simulateSeason();const old=state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,min:p.motivationMin,max:p.motivationMax,season:p.motivationSeason}));beginSeason();return JSON.stringify({old,now:state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,min:p.motivationMin,max:p.motivationMax,m:p.motivation,season:p.motivationSeason})),publicRosters:state.activeSeason.rosters,publicHistory:sim.result.rosters})})()"));
+assert.ok(motNewSeason.old.length>0);
+assert.ok(motNewSeason.old.every(p=>p.season===1));
+for(const old of motNewSeason.old){
+ const next=motNewSeason.now.find(p=>p.id===old.id);
+ if(!next)continue; // The special draft can replace a player at full roster.
+ assert.equal(next.min,old.min);
+ assert.equal(next.max,old.max);
+ assert.ok(next.m>=next.min&&next.m<=next.max);
+ assert.equal(next.season,2);
+}
+assert.ok(Object.values(motNewSeason.publicRosters).flat().every(p=>!('motivation' in p)&&!('motivationMin' in p)&&!('motivationMax' in p)));
+assert.ok(Object.values(motNewSeason.publicHistory).flat().every(p=>!('motivation' in p)&&!('motivationMin' in p)&&!('motivationMax' in p)));
+const motWeights=JSON.parse(evaluate("(function(){state=initialState();return JSON.stringify([-2,0,2].map(m=>({goal:scoringWeight({bonus:8,motivation:m}),assist:scoringWeight({bonus:8,motivation:m},true)})))})()"));
+assert.ok(motWeights[0].goal<motWeights[1].goal&&motWeights[1].goal<motWeights[2].goal);
+assert.ok(motWeights[0].assist<motWeights[1].assist&&motWeights[1].assist<motWeights[2].assist);
+assert.equal(evaluate('scoringWeight({bonus:1,motivation:-2})'),1);
+assert.equal(evaluate('scoringWeight({bonus:8,motivation:0})'),evaluate('scoringWeight({bonus:8})'));
+assert.equal(evaluate("bonusOf({roster:[{bonus:8,motivation:-2},{bonus:7,motivation:2}]})"),8);
+
+// Legacy players get Motivation only at the NEXT season start, not during
+// a saved season already in its playoffs.
+const legacyPlayers=JSON.parse(evaluate("(function(){state=initialState();var p=makeNewPlayer(0,'spawn',1);for(const k of ['motivation','motivationMin','motivationMax','motivationSeason'])delete p[k];state.teams[0].roster=[p];beginSeason();return JSON.stringify(state.teams[0].roster.find(x=>x.id===p.id))})()"));
+assert.ok(legacyPlayers.motivationMin>=-2&&legacyPlayers.motivationMax<=2);
+assert.ok(legacyPlayers.motivation>=legacyPlayers.motivationMin&&legacyPlayers.motivation<=legacyPlayers.motivationMax);
+assert.equal(legacyPlayers.motivationSeason,1);
+const legacyActive=JSON.parse(evaluate("(function(){state=initialState();beginSeason();for(const p of state.teams.flatMap(t=>t.roster))for(const k of ['motivation','motivationMin','motivationMax','motivationSeason'])delete p[k];const before=state.totalGames;playNextGames();return JSON.stringify({before,after:state.totalGames,p:state.teams[0].roster[0]})})()"));
+assert.ok(legacyActive.after>legacyActive.before);
+assert.equal(legacyActive.p.motivation,undefined);
+assert.equal(evaluate('scoringWeight({bonus:8,motivation:0})'),evaluate('scoringWeight({bonus:8})'));
+
+const sameYear=JSON.parse(evaluate("(function(){state=initialState();var p=makeNewPlayer(0,'spawn',1);rollPlayerMotivation(p,1);const saved={rng:state.rngState,m:p.motivation,min:p.motivationMin,max:p.motivationMax};return JSON.stringify({rerolled:rollPlayerMotivation(p,1),rngUnchanged:state.rngState===saved.rng,stillSame:saved.m===p.motivation,rangeSame:saved.min===p.motivationMin&&saved.max===p.motivationMax})})()"));
+assert.deepEqual(sameYear,{rerolled:false,rngUnchanged:true,stillSame:true,rangeSame:true});
+console.log('PASS: Hidden Motivation -2..+2 ranges, annual persistent rolls, legacy saves, secret stats, goal/assist scaling');
+
+
 // A rare scoring surge can create nine-goal games even between evenly
 // rated teams, without ever changing the victor or OT's one-goal margin.
 const surgeTest=JSON.parse(evaluate("(function(){const original=random;try{let seq=[.999,.999,.01,.999];random=()=>seq.length?seq.shift():.5;state=initialState();let a={id:0,roster:[]},b={id:1,roster:[]};let g={rollA:12,rollB:1,totalA:20,totalB:9,coin:false,winnerId:0,stage:'regular'};generateScore(a,b,g);return JSON.stringify({a:g.scoreA,b:g.scoreB,plays:g.goalEvents.length})}finally{random=original}})()"));
