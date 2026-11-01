@@ -108,3 +108,26 @@ const ordinaryTable = evaluate("table(['Team','GP'],['<tr><td>A</td><td>2</td></
 assert.equal((ordinaryTable.match(/<th\b/g)||[]).length,2);
 assert.match(ordinaryTable, /<th>Team<\/th><th>GP<\/th>/);
 console.log('PASS: Player History headings align with exactly 17 data columns');
+
+
+// Regression: Team Records history can collapse and scroll while retaining every season.
+const domNodes={};
+sandbox.document={getElementById(id){return domNodes[id]??=( {innerHTML:'',textContent:''} );}};
+sandbox.teamHistoryFixture=Array.from({length:23},(_,i)=>({
+  season:i+1,
+  standings:[{id:0,seed:1,w:10,l:12,otl:8,points:28,bonus:2}],
+  championId:0
+}));
+evaluate("state=initialState();view='teams';selectedTeam=0;getAll=async()=>teamHistoryFixture;getIndexAll=async()=>[]");
+evaluate("teamDetail()");
+assert.match(domNodes.app.innerHTML, /<details class="team-history-section" open>/);
+assert.match(domNodes.app.innerHTML, /<summary>Season-by-season franchise history<\/summary>/);
+await evaluate("loadTeamRecords(0)");
+const archiveMarkup=domNodes['team-seasons'].innerHTML;
+assert.match(archiveMarkup, /class="team-season-scroll"/);
+assert.match(archiveMarkup, /23 archived seasons/);
+assert.match(archiveMarkup, /scroll to see earlier seasons/);
+assert.equal((archiveMarkup.match(/<tr>/g)||[]).length,24);
+assert.ok(archiveMarkup.indexOf('data-year="23"')<archiveMarkup.indexOf('data-year="1"'));
+assert.match(archiveMarkup, /data-year="1"/);
+console.log('PASS: 23 franchise seasons retained in collapsible scrollable section');
