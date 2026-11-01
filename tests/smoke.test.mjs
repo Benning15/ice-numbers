@@ -11,6 +11,7 @@ const files = [
   'js/simulation.js',
   'js/season-actions.js',
   'js/views.js',
+  'js/v13.js',
   'js/customization.js',
   'js/app.js'
 ];
@@ -131,3 +132,68 @@ assert.equal((archiveMarkup.match(/<tr>/g)||[]).length,24);
 assert.ok(archiveMarkup.indexOf('data-year="23"')<archiveMarkup.indexOf('data-year="1"'));
 assert.match(archiveMarkup, /data-year="1"/);
 console.log('PASS: 23 franchise seasons retained in collapsible scrollable section');
+
+
+// V1.3 regression suite: championship stage, archive, player careers, pagination, odds.
+evaluate("state=initialState();var v13sim=simulateSeason();view='playoffs'");
+assert.equal(evaluate('state.seasonComplete'),true);
+assert.equal(evaluate('state.activeSeason'),null);
+assert.match(evaluate('runButtons()'),/View Championship Celebration/);
+assert.match(evaluate('championshipScore(v13sim.result)'),/^4–[0-3]$/);
+
+evaluate("getAll=async store=>store==='seasons'?[v13sim.result]:[]");
+await evaluate("championshipView()");
+assert.match(domNodes.app.innerHTML,/CHAMPIONS/);
+assert.match(domNodes.app.innerHTML,/Continue to Offseason/);
+assert.match(domNodes.app.innerHTML,/View Championship Series/);
+assert.match(domNodes.app.innerHTML,/Past Champions &amp; Runners-Up/);
+assert.match(domNodes.app.innerHTML,/data-year="1"/);
+
+evaluate("view='history';get=async(store,id)=>v13sim.result");
+await evaluate("history()");
+assert.match(domNodes.app.innerHTML,/All Championships &amp; Runners-Up/);
+assert.match(domNodes.app.innerHTML,/championship-history-scroll/);
+
+const samplePlayer = evaluate('v13sim.players.find(p=>p.history?.length)');
+assert.ok(samplePlayer);
+const yearly = evaluate("playerYearStats(v13sim.players.find(p=>p.id==="+samplePlayer.id+"),v13sim.players.find(p=>p.id==="+samplePlayer.id+").history[0],v13sim.games)");
+assert.equal(yearly.regular.g,samplePlayer.regGoals);
+assert.equal(yearly.regular.a,samplePlayer.regAssists);
+assert.equal(yearly.regular.gp,samplePlayer.regGames);
+assert.equal(yearly.playoff.g,samplePlayer.playoffGoals);
+assert.equal(yearly.playoff.a,samplePlayer.playoffAssists);
+assert.equal(yearly.playoff.gp,samplePlayer.playoffGames);
+evaluate("view='playerDetail';selectedPlayer="+samplePlayer.id+";get=async(store,id)=>v13sim.players.find(p=>p.id===id);getIndexAll=async(store,index,key)=>v13sim.games.filter(g=>g.season===key)");
+await evaluate("playerProfile()");
+assert.match(domNodes.app.innerHTML,/Season-by-Season Career/);
+assert.match(domNodes.app.innerHTML,/Back to Player History/);
+assert.match(domNodes.app.innerHTML,/<th>PO PTS<\/th>/);
+assert.match(domNodes.app.innerHTML,/data-year="1"/);
+
+// Old player records have the same basic history structure; no migration is required.
+assert.ok(!('regGoals' in samplePlayer.history[0]));
+assert.equal((domNodes.app.innerHTML.match(/<th>/g)||[]).length,12);
+
+assert.equal(evaluate('oddsTotal([35,25,15,10,7,4,3,1])'),100);
+assert.match(evaluate("oddsStatusHtml('normalWeights',[35,25,15,10,7,4,3,1])"),/odds-valid/);
+assert.match(evaluate("oddsStatusHtml('normalWeights',[35,25,15,10,7,4,3,2])"),/odds-invalid/);
+evaluate("view='settings';state=initialState();settings()");
+assert.match(domNodes.app.innerHTML,/data-odds-total="normalWeights"/);
+assert.match(domNodes.app.innerHTML,/data-odds-total="draftWeights"/);
+
+// All active players are included beyond top 1,000. Search reaches all retirees.
+sandbox.manyPlayers=Array.from({length:1005},(_,i)=>({id:i+1,name:i===1004?'Unique Legend':'Player '+(i+1),teamId:0,bonus:1,origin:'spawn',startingYear:1,seasons:1,retireSeason:i===1003?null:4}));
+evaluate("getAll=async()=>manyPlayers;state=initialState();view='players';playerSort='bonus';playerPage=0;playerQuery=''");
+await evaluate("players()");
+assert.match(domNodes.app.innerHTML,/of 1,001/);
+evaluate("playerPage=10");
+await evaluate("players()");
+assert.match(domNodes.app.innerHTML,/data-player="1004"/);
+evaluate("playerQuery='Unique Legend';playerPage=0");
+await evaluate("players()");
+assert.match(domNodes.app.innerHTML,/data-player="1005"/);
+
+// Starting a new regular season clears the ceremony without altering league history.
+evaluate("state=initialState();simulateSeason();beginSeason()");
+assert.equal(evaluate('state.seasonComplete'),false);
+console.log('PASS: V1.3 celebration, archives, old player stats, pagination and odds');
