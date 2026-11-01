@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.16**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.17**.
 
 ## Project files
 
@@ -30,6 +30,10 @@ Before publishing changes:
 
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
+
+## One-, two-, and three-player Live Scoring Calculator rosters (V1.3.17)
+
+The Live Scoring Calculator's three player-rating drop-downs now each include **Empty slot (no player)**. At least one featured player must be selected. Empty slots are *absent players*, not +0-rating featured players: they contribute no team rating/Offensive Depth bonus and have zero featured goal/assist probability. Empty players are omitted from the resulting scoring table, and their individual hypothetical goal-target sliders are disabled. The automatic projected team goals use only the actual selected players and respond immediately to changes. This allows modelling one or two named featured players alongside the existing three-player preview, while unnamed skaters continue to receive goals and assists as usual. The game's regular simulation, saved players, league settings and archives are unchanged.
 
 ## Live Scoring Calculator estimates team goals (V1.3.16)
 
