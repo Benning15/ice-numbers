@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.8**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.9**.
 
 ## Project files
 
@@ -30,6 +30,14 @@ Before publishing changes:
 
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
+
+## Individual Seasons leaderboard (V1.3.9)
+
+On **Player History**, use the **View** dropdown to switch between **Combined Seasons (Career)** and **Individual Seasons**. The original career leaderboard and its independent sorting remain available.
+
+Individual Seasons ranks every archived player-season separately; the same player may appear multiple times. Sort columns or use the sort dropdown to rank single-season regular-season goals, assists, points, points per game, playoff production, and other fields. Each entry shows the player's team, displayed season rating, career year, regular-season games/goals/assists/points and P/GP, separate playoff games/goals/assists/points, and championships. Player names open career profiles; completed season numbers open that season's history. Live playoff seasons are labeled **live**.
+
+Season performances are reconstructed from stored rosters and actual scoring-play events, including archives created before this release; no stored career or game statistics are rewritten. Missing old scoring play logs are explicitly shown as unavailable rather than zero. The top 1,000 performances for the chosen sort appear by default, 100 per page; a name/team search can find any archived performance. Browser-session caching avoids rereading every game when simply changing sorting or pages, with automatic refresh as the league advances.
 
 ## Offensive Depth (V1.3.8)
 
