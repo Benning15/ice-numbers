@@ -458,6 +458,8 @@ assert.match(settingsHtml,/data-scoring-preset="moderate"/);
 assert.match(settingsHtml,/data-scoring-preset="stars"/);
 assert.match(settingsHtml,/id="preview-rating-2"/);
 assert.match(settingsHtml,/id="preview-team-goals"/);
+assert.match(settingsHtml,/id="preview-auto-goals"[^>]*type="checkbox" checked/);
+assert.match(settingsHtml,/Projected team goals in season/);
 
 
 // A saved older league may still have 1.0 / 9 and should show those actual
@@ -485,6 +487,45 @@ assert.equal(Number(domNodes['cfg-goalExponent'].value),1.15);
 assert.equal(Number(domNodes['cfg-assistExponent'].value),1.2);
 assert.equal(evaluate('state.settings.goalExponent'),1.35);
 console.log('PASS: scoring preview sliders, presets, exact goal/assist expectations and non-mutating Settings');
+
+// Ratings-aware automatic team-goal estimates use the real score-generation
+// rules and an isolated PRNG (never advancing the live league RNG).
+const autoGoals=JSON.parse(evaluate("(function(){state=initialState();const oldRng=state.rngState;const rules=state.settings;const weak=scoringPreviewTeamGoals([1,1,1],rules,30),mid=scoringPreviewTeamGoals([8,1,1],rules,30),elite=scoringPreviewTeamGoals([8,8,8],rules,30),off=scoringPreviewTeamGoals([8,8,8],{...rules,offensiveDepthStrength:0},30),half=scoringPreviewTeamGoals([8,8,8],rules,60),cap9=scoringPreviewTeamGoals([8,8,8],{...rules,maxGoalsPerTeam:9},30);return JSON.stringify({weak,mid,elite,off,half,cap9,unchanged:state.rngState===oldRng,repeated:elite===scoringPreviewTeamGoals([8,8,8],rules,30)})})()"));
+assert.ok(autoGoals.weak<autoGoals.mid&&autoGoals.mid<autoGoals.elite,JSON.stringify(autoGoals));
+assert.ok(autoGoals.elite>autoGoals.off+10,'additional offensive depth should produce additional goals');
+assert.ok(Math.abs(autoGoals.half-2*autoGoals.elite)<=1,'goals forecast scales with season length');
+assert.ok(autoGoals.cap9<=autoGoals.elite,'lower goal cap should not raise the expected team goals');
+assert.equal(autoGoals.unchanged,true);
+assert.equal(autoGoals.repeated,true);
+
+for(const [k,value] of Object.entries({
+ 'cfg-gamesPerTeam':'30','cfg-maxBonus':'8','cfg-rollMax':'12','cfg-offensiveDepthStrength':'3','cfg-maxGoalsPerTeam':'15',
+ 'cfg-goalExponent':'1.35','cfg-assistExponent':'1.2','cfg-unnamedWeight':'8','cfg-unassistedPct':'6','cfg-oneAssistPct':'19',
+ 'preview-rating-0':'8','preview-rating-1':'8','preview-rating-2':'7',
+ 'preview-target-0':'30','preview-target-1':'30','preview-target-2':'30',
+ 'preview-team-goals':'90'
+}))domNodes[k].value=value;
+domNodes['preview-auto-goals'].checked=true;
+evaluate('state=initialState();updateScoringPreview()');
+const initialAuto=Number(domNodes['preview-team-goals'].value);
+assert.ok(initialAuto>0);
+assert.match(domNodes['scoring-preview-results'].innerHTML,/Auto-estimated/);
+assert.equal(domNodes['preview-team-goals'].readOnly,true);
+domNodes['preview-rating-0'].value='1';
+evaluate('updateScoringPreview()');
+assert.ok(Number(domNodes['preview-team-goals'].value)<initialAuto,'preview should respond to a weaker rated player');
+domNodes['preview-auto-goals'].checked=false;
+domNodes['preview-team-goals'].value='101';
+evaluate('updateScoringPreview()');
+assert.equal(domNodes['preview-team-goals'].value,'101','manual override should stay exactly as entered');
+assert.equal(domNodes['preview-team-goals'].readOnly,false);
+assert.match(domNodes['scoring-preview-results'].innerHTML,/Manually assumed/);
+domNodes['preview-auto-goals'].checked=true;
+domNodes['preview-rating-0'].value='8';
+evaluate('updateScoringPreview()');
+assert.equal(Number(domNodes['preview-team-goals'].value),initialAuto);
+console.log('PASS: Live scoring preview automatically forecasts GF from roster ratings, scoring rules and season length; optional manual override; no live RNG changes');
+
 
 assert.match(settingsHtml,/id="cfg-unassistedPct"[^>]*value="6"/);
 assert.match(settingsHtml,/id="cfg-oneAssistPct"[^>]*value="19"/);
