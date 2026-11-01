@@ -518,11 +518,11 @@ assert.match(assistIndicator.textContent,/Two-assist goals: 35%/);
 assert.match(assistIndicator.className,/odds-valid/);
 
 sandbox.saveClicks=0;
-evaluate("saveSettings=()=>{saveClicks++};handleClick({target:{closest:selector=>selector==='button'?{id:'',dataset:{saveSettings:''}}:null}})");
+evaluate("saveSettings=async()=>{saveClicks++};handleClick({target:{closest:selector=>selector==='button'?{id:'',dataset:{saveSettings:''}}:null}})");
 assert.equal(sandbox.saveClicks,1);
 
 sandbox.defaultButtonClicks=[];
-evaluate("saveSettings=makeDefault=>{defaultButtonClicks.push(makeDefault)};handleClick({target:{closest:selector=>selector==='button'?{id:'set-default-settings',dataset:{}}:null}})");
+evaluate("saveSettings=async makeDefault=>{defaultButtonClicks.push(makeDefault)};handleClick({target:{closest:selector=>selector==='button'?{id:'set-default-settings',dataset:{}}:null}})");
 assert.deepEqual(sandbox.defaultButtonClicks,[true]);
 console.log('PASS: live two-assist validation, both whole-page save controls, and save handler');
 console.log('PASS: NHL-style 6/19/75 assist defaults for new universes');
