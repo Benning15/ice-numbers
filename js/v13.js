@@ -105,3 +105,30 @@ function seasonRosterPanel(s){
  }).join('');
  return '<div class="panel"><details><summary>Featured player rosters — Season '+s.season+'</summary><p class="sub tiny" style="margin:10px 0">Rosters at the start of the season. Click any player for their complete career.</p><div class="season-roster-grid">'+blocks+'</div></details></div>';
 }
+
+
+// Two-assist goals are the remainder after unassisted and one-assist goals.
+// Use the same green/red validation feedback as player-generation odds.
+function assistDistribution(unassisted,oneAssist){
+ const parse=x=>typeof x==='string'&&x.trim()===''?NaN:Number(x);
+ const zero=parse(unassisted),one=parse(oneAssist);
+ const valid=Number.isInteger(zero)&&Number.isInteger(one)&&zero>=0&&one>=0&&zero<=100&&one<=100&&zero+one<=100;
+ return {valid,two:valid?100-zero-one:null};
+}
+function assistStatusText(result){
+ return result.valid
+  ?'Two-assist goals: '+result.two+'% · Total: 100% — Valid'
+  :'Two-assist goals: — · Invalid — 0-assist and 1-assist percentages must add up to 100% or less.';
+}
+function assistStatusHtml(unassisted,oneAssist){
+ const result=assistDistribution(unassisted,oneAssist);
+ return '<p class="odds-status '+(result.valid?'odds-valid':'odds-invalid')+'" data-assist-status role="status">'+assistStatusText(result)+'</p>';
+}
+function updateAssistStatus(){
+ const el=document.querySelector('[data-assist-status]');
+ const zero=document.getElementById('cfg-unassistedPct'),one=document.getElementById('cfg-oneAssistPct');
+ if(!el||!zero||!one)return;
+ const result=assistDistribution(zero.value,one.value);
+ el.className='odds-status '+(result.valid?'odds-valid':'odds-invalid');
+ el.textContent=assistStatusText(result);
+}
