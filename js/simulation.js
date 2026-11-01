@@ -16,9 +16,29 @@ function beginSeason(){
  if(state.activeSeason)throw Error('Finish the current playoffs before starting another regular season.');
  state.seasonComplete=false;
  const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(),events=[],rosterStart={};
+ // Brand-new universes begin with 1–3 players per team (15% / 50% / 35%).
+ // This runs once at the first Season 1 simulation, not when the empty state
+ // is created, so the initial teams/settings are still editable beforehand.
+ // Older saved universes have no openingRostersPending flag and retain the
+ // original one-player-per-empty-team start. A prefilled season-0 roster also
+ // follows the legacy path to avoid adding unexpected players.
+ const openingRosters=year===1&&state.openingRostersPending===true&&
+   state.teams.every(t=>t.roster.length===0);
+ state.openingRostersPending=false;
+ if(openingRosters){
+  for(const t of state.teams){
+   const target=Math.min(s.maxRoster,weighted([15,50,35]));
+   for(let i=0;i<target;i++){
+    const p=makeNewPlayer(t.id,'spawn',year);
+    t.roster.push(p);
+    changed.set(p.id,p);
+    events.push(`${t.name} started with ${p.name} (+${p.bonus}, Year ${p.year})`);
+   }
+  }
+ }
  // Last-place team drafts first, then may also spawn if its roster is not full.
  if(state.pendingDraftTeam!==null){let t=state.teams[state.pendingDraftTeam],pick=makeNewPlayer(t.id,'draft',year);if(t.roster.length>=s.maxRoster){let worst=t.roster.reduce((a,b)=>a.bonus<=b.bonus?a:b);t.roster=t.roster.filter(p=>p.id!==worst.id);worst.retireSeason=year-1;changed.set(worst.id,worst);events.push(`${t.name} released ${worst.name} (+${worst.bonus}) for a draft pick`)}t.roster.push(pick);changed.set(pick.id,pick);events.push(`${t.name} drafted ${pick.name} (+${pick.bonus}, Year 1)`)}
- for(const t of state.teams){if(t.roster.length<s.maxRoster){let p=makeNewPlayer(t.id,'spawn',year);t.roster.push(p);changed.set(p.id,p);events.push(`${t.name} spawned ${p.name} (+${p.bonus}, Year ${p.year})`)}for(const p of t.roster)if(rollPlayerMotivation(p,year))changed.set(p.id,p);rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin}))}
+ for(const t of state.teams){if(!openingRosters&&t.roster.length<s.maxRoster){let p=makeNewPlayer(t.id,'spawn',year);t.roster.push(p);changed.set(p.id,p);events.push(`${t.name} spawned ${p.name} (+${p.bonus}, Year ${p.year})`)}for(const p of t.roster)if(rollPlayerMotivation(p,year))changed.set(p.id,p);rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin}))}
  const before=state.teams.map(t=>({w:t.regW,l:t.regL,otl:t.regOTL||0,points:t.regPoints,coinW:t.regCoinW,coinL:t.regCoinL,gf:t.pointsFor,ga:t.pointsAgainst}));
  const bonus=state.teams.map(bonusOf),rr=roundRobin(state.teams.map(t=>t.id)),legs=s.gamesPerTeam/15;
  for(let leg=0;leg<legs;leg++)for(const round of rr)for(let i=0;i<round.length;i++){
