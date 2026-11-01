@@ -493,6 +493,8 @@ assert.match(settingsHtml,/Two-assist goals: 75%/);
 assert.match(settingsHtml,/data-assist-status/);
 assert.match(settingsHtml,/settings-savebar/);
 assert.match(settingsHtml,/id="save-settings"/);
+assert.match(settingsHtml,/id="set-default-settings"[^>]*>Set as Default<\/button>/);
+assert.match(settingsHtml,/Save this league's rules, or save these values as your default/);
 assert.match(settingsHtml,/data-save-settings/);
 assert.equal((settingsHtml.match(/Save All Settings/g)||[]).length,2);
 assert.ok(settingsHtml.indexOf('id="save-settings"')<settingsHtml.indexOf('Realistic scores and assists'));
@@ -518,6 +520,10 @@ assert.match(assistIndicator.className,/odds-valid/);
 sandbox.saveClicks=0;
 evaluate("saveSettings=()=>{saveClicks++};handleClick({target:{closest:selector=>selector==='button'?{id:'',dataset:{saveSettings:''}}:null}})");
 assert.equal(sandbox.saveClicks,1);
+
+sandbox.defaultButtonClicks=[];
+evaluate("saveSettings=makeDefault=>{defaultButtonClicks.push(makeDefault)};handleClick({target:{closest:selector=>selector==='button'?{id:'set-default-settings',dataset:{}}:null}})");
+assert.deepEqual(sandbox.defaultButtonClicks,[true]);
 console.log('PASS: live two-assist validation, both whole-page save controls, and save handler');
 console.log('PASS: NHL-style 6/19/75 assist defaults for new universes');
 
@@ -583,3 +589,45 @@ await evaluate("playerIndividualSeasons()");
 assert.match(domNodes.app.innerHTML,/shown as —/);
 assert.match(domNodes.app.innerHTML,/<td>—<\/td>/);
 console.log('PASS: Individual Seasons dropdown, scoring histories, columns, search, pagination and incomplete archives');
+
+
+// V1.3.15: the saved preferred settings are browser-local preferences, not
+// part of a universe; clearing/importing a league must NOT delete them.
+const storeData={meta:new Map([['main',{key:'main',value:{season:45}}]]),seasons:new Map([[1,{season:1}]]),games:new Map([[1,{id:1}]]),players:new Map([[1,{id:1}]])};
+sandbox.mockDefaultDB={
+ transaction(name){
+  const tx={
+   objectStore(store){
+    const rows=storeData[store];
+    return {
+     put(item){rows.set(item.key,item)},
+     clear(){rows.clear()},
+     delete(key){rows.delete(key)}
+    };
+   }
+  };
+  queueMicrotask(()=>tx.oncomplete?.());
+  return tx;
+ }
+};
+evaluate("db=mockDefaultDB");
+await evaluate("commitDefaultSettings({...DEFAULTS,rollMax:29,offensiveDepthStrength:2.5,maxGoalsPerTeam:14,goalTargetAnnualChange:1})");
+assert.equal(storeData.meta.get('customSettingsDefaults').value.rollMax,29);
+assert.equal(storeData.meta.get('main').value.season,45,'the user's existing league remains unchanged when a default is stored');
+await evaluate("clearAll()");
+assert.equal(storeData.meta.has('main'),false);
+assert.equal(storeData.meta.get('customSettingsDefaults').value.rollMax,29,'stored defaults survive new-league resets and backup import');
+assert.ok(Object.values(storeData).slice(1).every(rows=>rows.size===0),'reset clears all old league data');
+sandbox.savedPreference=storeData.meta.get('customSettingsDefaults');
+evaluate("get=async (store,key)=>store==='meta'&&key==='customSettingsDefaults'?savedPreference:null");
+const newLeagueSettings=JSON.parse(await evaluate("newUniverseState().then(next=>JSON.stringify(next.settings))"));
+assert.equal(newLeagueSettings.rollMax,29);
+assert.equal(newLeagueSettings.offensiveDepthStrength,2.5);
+assert.equal(newLeagueSettings.maxGoalsPerTeam,14);
+assert.equal(newLeagueSettings.goalTargetAnnualChange,1);
+assert.equal(newLeagueSettings.gamesPerTeam,30);
+sandbox.savedPreference=null;
+const builtInSettings=JSON.parse(await evaluate("newUniverseState().then(next=>JSON.stringify(next.settings))"));
+assert.equal(builtInSettings.rollMax,12);
+assert.equal(builtInSettings.offensiveDepthStrength,3);
+console.log('PASS: Set as Default saves the selected settings separately and survives universe reset/import without affecting past records');
