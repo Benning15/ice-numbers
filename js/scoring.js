@@ -1,12 +1,45 @@
 'use strict';
-function newPlayer(teamId,origin,season){let s=state.settings;return {id:state.nextPlayerId++,teamId,name:FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)],bonus:weighted(origin==='draft'?s.draftWeights:s.normalWeights),startingYear:origin==='draft'?1:randint(1,s.careerLength),year:0,origin,joinSeason:season,retireSeason:null,seasons:0,regGames:0,regWins:0,regLosses:0,regOTL:0,regGoals:0,regAssists:0,playoffGoals:0,playoffAssists:0,playoffGames:0,playoffWins:0,playoffLosses:0,titles:0,history:[]}}
+
+// Hidden Motivation: most players have modest year-to-year swings, with rare
+// consistently positive/negative players and rare wide-range wildcards.
+// Range is permanent; a new value is rolled once at the start of each season.
+const MOTIVATION_RANGES=[
+ [-2,-1,5],[-2,0,8],[-2,2,4],
+ [-1,0,16],[-1,1,25],[0,0,12],
+ [0,1,16],[0,2,8],[1,2,6]
+];
+function motivationRange(){
+ const choice=weighted(MOTIVATION_RANGES.map(x=>x[2]))-1;
+ return MOTIVATION_RANGES[choice];
+}
+function rollPlayerMotivation(p,season){
+ if(p.motivationSeason===season)return false;
+ // Old saves have no Motivation fields. Add them only when a new season
+ // begins, leaving historical scores and an in-progress season untouched.
+ if(!Number.isInteger(p.motivationMin)||!Number.isInteger(p.motivationMax)||
+    p.motivationMin< -2||p.motivationMax>2||p.motivationMin>p.motivationMax){
+   const [min,max]=motivationRange();
+   p.motivationMin=min;
+   p.motivationMax=max;
+ }
+ p.motivation=randint(p.motivationMin,p.motivationMax);
+ p.motivationSeason=season;
+ return true;
+}
+function newPlayer(teamId,origin,season){
+ const s=state.settings,[min,max]=motivationRange();
+ return {id:state.nextPlayerId++,teamId,name:FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)],bonus:weighted(origin==='draft'?s.draftWeights:s.normalWeights),
+ startingYear:origin==='draft'?1:randint(1,s.careerLength),year:0,origin,joinSeason:season,retireSeason:null,
+ motivationMin:min,motivationMax:max,motivation:0,motivationSeason:null,
+ seasons:0,regGames:0,regWins:0,regLosses:0,regOTL:0,regGoals:0,regAssists:0,playoffGoals:0,playoffAssists:0,playoffGames:0,playoffWins:0,playoffLosses:0,titles:0,history:[]};
+}
 function makeNewPlayer(teamId,origin,season){let p=newPlayer(teamId,origin,season);p.year=p.startingYear;return p}
 function bonusOf(team){return Math.min(state.settings.maxBonus,team.roster.reduce((a,p)=>a+p.bonus,0))}
 // Ice Numbers 1.2: one source of truth for rolls, scores and scoring plays.
 function clamp(x,lo,hi){return Math.max(lo,Math.min(hi,x))}
 function ensurePlayer(p){for(const key of ['regGoals','regAssists','regOTL','playoffGoals','playoffAssists','regGames','regWins','regLosses','playoffGames','playoffWins','playoffLosses','seasons','titles'])p[key]??=0;return p}
 function pickWeighted(items){let sum=items.reduce((z,i)=>z+i.weight,0),v=random()*sum;for(const item of items){v-=item.weight;if(v<0)return item.id}return items[items.length-1].id}
-function scoringWeight(p,assist=false){return Math.pow(p.bonus+1,assist?(state.settings.assistExponent??1.2):(state.settings.goalExponent??1.35))}
+function scoringWeight(p,assist=false){const effective=Math.max(0,p.bonus+(Number.isInteger(p.motivation)?p.motivation:0));return Math.pow(effective+1,assist?(state.settings.assistExponent??1.2):(state.settings.goalExponent??1.35))}
 function scoringPlay(team,stage,game,changed){
  const players=team.roster;
  const scorerPool=[{id:null,weight:state.settings.unnamedWeight??8},...players.map(p=>({id:p.id,weight:scoringWeight(p)}))];
