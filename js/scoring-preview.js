@@ -1,16 +1,20 @@
 'use strict';
 
-// Settings-only analytical preview. It follows scoringPlay's exact weighted
-// scorer/assister selection, including scorer exclusion, no repeated featured
-// assister, and the unnamed-skater bucket for each assist slot.
+// Settings-only analytical preview. Expected goals use the same neutral
+// per-player goal targets as scoringPlay with the user-supplied team GF pace.
+// Assists still use the exact weighted scorer-exclusion and assister rules.
 const SCORING_PRESETS={
  balanced:[1,1],
  moderate:[1.15,1.2],
  default:[1.35,1.2],
  stars:[1.65,1.55]
 };
-function scoringPreviewOdds(ratings,goalExponent,assistExponent,unnamedWeight,unassistedPct,oneAssistPct){
- const goalWeights=ratings.map(v=>Math.pow(v+1,goalExponent)).concat(unnamedWeight);
+function scoringPreviewOdds(ratings,goalExponent,assistExponent,unnamedWeight,unassistedPct,oneAssistPct,teamGoals=90,gamesPerTeam=30){
+ const featuredGoalRates=ratings.map(v=>Math.pow((v+1)/9,goalExponent));
+ const featuredTotal=featuredGoalRates.reduce((sum,v)=>sum+v,0);
+ const expectedGF=teamGoals/Math.max(1,gamesPerTeam);
+ const anonymousGoalRate=Math.max(0,expectedGF-featuredTotal)*(unnamedWeight/8);
+ const goalWeights=featuredGoalRates.concat(anonymousGoalRate);
  const assistWeights=ratings.map(v=>Math.pow(v+1,assistExponent)).concat(unnamedWeight);
  const goalSum=goalWeights.reduce((a,b)=>a+b,0);
  const goals=goalWeights.map(v=>v/goalSum);
@@ -43,7 +47,7 @@ function scoringPreviewMarkup(s){
   '<p class="help">Choose a three-player roster to see who receives goals and assists. This is a preview only — it does not generate players or change game results. It assumes neutral (0) Motivation; real players have hidden seasonal adjustments.</p>'+
   '<div class="scoring-preview-controls">'+ratings.map(select).join('')+
   '<div class="control"><label for="preview-team-goals">Assumed team goals in season</label><input type="number" id="preview-team-goals" min="1" max="2000" step="1" value="'+(s.gamesPerTeam*3)+'"></div></div>'+
-  '<p class="help">For example, 90 team goals over 30 games. This is an assumption for the preview, not a forecast.</p>'+
+  '<p class="help">Team goals are an assumption, not a forecast. At neutral Motivation, a +8 is calibrated to about one goal per game, even alongside other +8 players, provided the team scores enough. Real season totals fluctuate.</p>'+
   '<div class="scoring-presets"><span class="sub tiny">Quick presets:</span>'+
   '<button type="button" data-scoring-preset="balanced">Balanced</button>'+
   '<button type="button" data-scoring-preset="moderate">Moderate</button>'+
@@ -81,7 +85,7 @@ function updateScoringPreview(){
    output.innerHTML='<p class="odds-status odds-invalid">Check the goal/assist strength, probabilities, roster ratings and team-goal assumption.</p>';return;
  }
  const ratings=ratingEls.map(e=>Number(e.value));
- const result=scoringPreviewOdds(ratings,goalExp,assistExp,unnamed,zero,one);
+ const result=scoringPreviewOdds(ratings,goalExp,assistExp,unnamed,zero,one,teamGoals,Number($('cfg-gamesPerTeam')?.value)||state.settings.gamesPerTeam);
  const items=ratings.map((r,i)=>({name:'Player '+('ABC'[i])+' (+'+r+')',i})).concat({name:'Unnamed skaters',i:3});
  const rows=items.map(({name,i})=>{
    const share=result.goals[i]*100;
@@ -93,7 +97,7 @@ function updateScoringPreview(){
  output.innerHTML='<p class="sub tiny">Projected scoring across <b>'+fmt(teamGoals)+'</b> team goals &middot; '+result.assistsPerGoal.toFixed(2)+' assists per goal</p>'+
   '<div class="tablewrap"><table class="preview-table"><thead><tr><th>Scorer</th><th>Goal chance</th><th>Goals</th><th>Assists</th><th>Points</th></tr></thead>'+
   '<tbody>'+rows+'</tbody></table></div>'+
-  '<p class="help">Goals are assigned first. The goal scorer cannot earn an assist on that goal, and each featured player can receive at most one assist per goal. Numbers are mathematical expectations at neutral Motivation, not guaranteed season totals. Actual players may score more or less because of hidden seasonal Motivation; roster/team goal assumptions are only for this preview.</p>';
+  '<p class="help">A neutral +8 targets about one goal per game; actual goals can vary with team scoring, Hidden Motivation and chance. When expected team scoring is too low to support all featured goal targets, the goals must be shared. A scorer cannot assist their own goal, and each named player can earn at most one assist per goal. This is a mathematical preview, not a guaranteed result.</p>';
 }
 function applyScoringPreset(name){
  const values=SCORING_PRESETS[name];
