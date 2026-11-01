@@ -13,6 +13,7 @@ const files = [
   'js/views.js',
   'js/v13.js',
   'js/customization.js',
+  'js/scoring-preview.js',
   'js/app.js'
 ];
 const sandbox = vm.createContext({console});
@@ -270,6 +271,35 @@ assert.match(evaluate("assistStatusHtml(70,40)"),/odds-invalid/);
 
 evaluate("view='settings';state=initialState();settings()");
 const settingsHtml=domNodes.app.innerHTML;
+assert.match(settingsHtml,/Live scoring calculator/);
+assert.match(settingsHtml,/id="strength-goalExponent"/);
+assert.match(settingsHtml,/id="strength-assistExponent"/);
+assert.match(settingsHtml,/data-scoring-preset="balanced"/);
+assert.match(settingsHtml,/data-scoring-preset="moderate"/);
+assert.match(settingsHtml,/data-scoring-preset="stars"/);
+assert.match(settingsHtml,/id="preview-rating-2"/);
+assert.match(settingsHtml,/id="preview-team-goals"/);
+
+const previewOdds=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,7],1.35,1.2,8,6,19))"));
+assert.ok(Math.abs(previewOdds.goals.reduce((a,b)=>a+b,0)-1)<1e-10);
+assert.ok(Math.abs(previewOdds.assists.reduce((a,b)=>a+b,0)-1.69)<1e-10);
+assert.ok(Math.abs(previewOdds.goals[0]-previewOdds.goals[1])<1e-12);
+assert.ok(previewOdds.goals[0]>previewOdds.goals[2]);
+assert.ok(previewOdds.goals[2]>previewOdds.goals[3]);
+assert.ok(previewOdds.assists.every(x=>x>=0));
+const plainAssist=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,7],1.35,1.2,8,0,100))"));
+assert.ok(Math.abs(plainAssist.assists.reduce((a,b)=>a+b,0)-1)<1e-10);
+const doubleAssist=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,7],1.35,1.2,8,0,0))"));
+assert.ok(Math.abs(doubleAssist.assists.reduce((a,b)=>a+b,0)-2)<1e-10);
+// Preview presets modify the input fields only, without saving league state.
+domNodes['cfg-goalExponent'].value='1.35';
+domNodes['cfg-assistExponent'].value='1.2';
+evaluate("applyScoringPreset('moderate')");
+assert.equal(Number(domNodes['cfg-goalExponent'].value),1.15);
+assert.equal(Number(domNodes['cfg-assistExponent'].value),1.2);
+assert.equal(evaluate('state.settings.goalExponent'),1.35);
+console.log('PASS: scoring preview sliders, presets, exact goal/assist expectations and non-mutating Settings');
+
 assert.match(settingsHtml,/id="cfg-unassistedPct"[^>]*value="6"/);
 assert.match(settingsHtml,/id="cfg-oneAssistPct"[^>]*value="19"/);
 assert.match(settingsHtml,/Two-assist goals: 75%/);
