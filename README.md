@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3**.
 
 ## Project files
 
@@ -12,6 +12,7 @@ A browser-based 16-team hockey league simulator focused on long-term statistics 
 - `js/simulation.js` – schedule, standings, regular season, and playoff rules
 - `js/season-actions.js` – save and resume a season, and advance playoffs
 - `js/views.js` – dashboard, standings, team/player history, FAQ, and bracket
+- `js/v13.js` – championship celebration/history, player career profiles, and generation-odds feedback
 - `js/customization.js` – rename teams and upload team logos
 - `js/app.js` – settings, imports/exports, navigation events, and startup
 - `tests/smoke.test.mjs` – automated rule and statistics regression checks
@@ -32,5 +33,7 @@ GitHub Actions automatically runs syntax and simulation tests on each push to `m
 ## Saving league history
 
 League data is stored in the current browser's IndexedDB database, **IceNumbersV1**. Restructuring the code does **not** change its database name or records.
+
+V1.3 adds a season-complete championship screen, championship archive, clickable season-by-season player careers reconstructed from saved game records, a searchable/paged Player History archive, and live player generation odds totals. Existing saved universes require no reset.
 
 The website is public but your league data is not uploaded to GitHub. Use the built-in backup export before resetting a universe or clearing browser data.
