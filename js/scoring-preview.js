@@ -49,7 +49,7 @@ function scoringPreviewMarkup(s){
   '<button type="button" data-scoring-preset="moderate">Moderate</button>'+
   '<button type="button" data-scoring-preset="default">Original defaults</button>'+
   '<button type="button" data-scoring-preset="stars">Star-heavy</button></div>'+
-  '<p class="help">Presets change only the goal and assist strength controls above. Press <b>Save All Settings</b> to apply them to future seasons.</p>'+
+  '<p class="help">Presets change only the goal and assist strength controls above. Use the Save button to apply them to future seasons.</p>'+
   '<div id="scoring-preview-results" aria-live="polite"></div>'+
   '</section>';
 }
