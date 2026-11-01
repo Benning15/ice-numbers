@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.7**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.8**.
 
 ## Project files
 
@@ -30,6 +30,12 @@ Before publishing changes:
 
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
+
+## Offensive Depth (V1.3.8)
+
+Uncapped roster bonuses above the configured team winning cap create *extra scoring opportunities*, especially on higher original team rolls. With Offensive Depth Strength at 1 (default), each 16 uncapped points above the capped winning bonus is worth one expected extra goal on a maximum roll, or half a goal on a half-size roll, before the score ceiling. This affects final goal totals in both regular season and playoffs, but not the underlying adjusted rolls used to determine the winner.
+
+The Settings page exposes **Offensive Depth Strength** from 0 (off / old scoring behavior) to 3 in 0.25 steps, with a live example of +8/+1/+1 vs +8/+8/+8. **Maximum team goals in a game** defaults to 9 and is adjustable up to 15. Non-overtime winners always have more goals, and coin-flip overtime finishes remain one-goal games. All goal events, assists, player totals and archives are recorded for extra goals normally. Previous seasons are unchanged; new settings apply to future seasons only.
 
 ## Hidden Motivation (V1.3.7)
 
