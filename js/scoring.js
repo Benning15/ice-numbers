@@ -51,7 +51,7 @@ function individualGoalRate(p,goalExponent=state.settings.goalExponent??1.35){
  return Math.pow((effective+1)/9,goalExponent);
 }
 function scoringGoalsEstimate(team,settings=state.settings){
- const strength=Math.max(0,Number(settings.offensiveDepthStrength??1));
+ const strength=Math.max(0,Number(settings.offensiveDepthStrength??DEFAULTS.offensiveDepthStrength));
  const depth=Math.max(0,team.roster.reduce((n,p)=>n+p.bonus,0)-settings.maxBonus);
  const startingEstimate=3+Math.min(3,depth/16*strength*.5);
  const gp=Math.max(0,Number(team.scoringGP||0));
@@ -90,7 +90,7 @@ function scoringPlay(team,stage,game,changed){
 // strength 1, a +24 roster (vs a +8 cap) with a maximum roll expects one
 // extra goal; a half-size roll expects half a goal, before score limits.
 function offensiveDepthExpectation(team,roll,settings=state.settings){
- const strength=Number(settings.offensiveDepthStrength??1);
+ const strength=Number(settings.offensiveDepthStrength??DEFAULTS.offensiveDepthStrength);
  if(!(strength>0)||!(roll>0))return 0;
  const uncapped=team.roster.reduce((total,p)=>total+p.bonus,0);
  const excess=Math.max(0,uncapped-settings.maxBonus);
@@ -105,7 +105,7 @@ function extraOffensiveGoals(team,roll,settings=state.settings){
  return whole+(fraction>0&&random()<fraction?1:0);
 }
 function generateScore(a,b,g,changed){
- const cap=Math.max(2,Math.floor(state.settings.maxGoalsPerTeam??9));
+ const cap=Math.max(2,Math.floor(state.settings.maxGoalsPerTeam??DEFAULTS.maxGoalsPerTeam));
  const lower=Math.min(g.rollA,g.rollB);
  let losingGoals=clamp(Math.round(1+lower*.19+(random()-.5)*2.8),0,Math.min(6,cap-1));
  let margin;
