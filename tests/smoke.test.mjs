@@ -209,3 +209,47 @@ assert.match(linkedPlay,/data-player="77"/);
 const unnamedPlay=evaluate("scoringPlayerLinks({scorerId:null,scorerName:'Unnamed skater',assistIds:[],assistNames:[],anonymousAssists:0,assistsCount:0})");
 assert.doesNotMatch(unnamedPlay,/data-player/);
 console.log('PASS: historical roster and scoring-play player links');
+
+
+// V1.3 settings polish: live two-assist balance and save buttons for the entire page.
+assert.deepEqual(JSON.parse(evaluate("JSON.stringify(assistDistribution(20,45))")),{valid:true,two:35});
+assert.deepEqual(JSON.parse(evaluate("JSON.stringify(assistDistribution(6,19))")),{valid:true,two:75});
+assert.deepEqual(JSON.parse(evaluate("JSON.stringify(assistDistribution(0,0))")),{valid:true,two:100});
+for(const [a,b] of [[70,40],[100,1],[-1,10],['',45],[15.5,20]]) {
+ assert.equal(evaluate('assistDistribution('+JSON.stringify(a)+','+JSON.stringify(b)+').valid'),false);
+}
+assert.match(evaluate("assistStatusHtml(6,19)"),/Two-assist goals: 75%.*Valid/);
+assert.match(evaluate("assistStatusHtml(6,19)"),/odds-valid/);
+assert.match(evaluate("assistStatusHtml(70,40)"),/odds-invalid/);
+
+evaluate("view='settings';state=initialState();settings()");
+const settingsHtml=domNodes.app.innerHTML;
+assert.match(settingsHtml,/data-assist-status/);
+assert.match(settingsHtml,/settings-savebar/);
+assert.match(settingsHtml,/id="save-settings"/);
+assert.match(settingsHtml,/data-save-settings/);
+assert.equal((settingsHtml.match(/Save All Settings/g)||[]).length,2);
+assert.ok(settingsHtml.indexOf('id="save-settings"')<settingsHtml.indexOf('Realistic scores and assists'));
+assert.ok(settingsHtml.indexOf('data-save-settings')>settingsHtml.indexOf('Playoffs</h2>'));
+
+const assistIndicator={className:'',textContent:''};
+sandbox.document.querySelector=selector=>selector==='[data-assist-status]'?assistIndicator:null;
+domNodes['cfg-unassistedPct'].value='6';
+domNodes['cfg-oneAssistPct'].value='19';
+evaluate('updateAssistStatus()');
+assert.match(assistIndicator.textContent,/Two-assist goals: 75%/);
+assert.match(assistIndicator.className,/odds-valid/);
+domNodes['cfg-unassistedPct'].value='82';
+evaluate('updateAssistStatus()');
+assert.match(assistIndicator.className,/odds-invalid/);
+assert.match(assistIndicator.textContent,/Invalid/);
+domNodes['cfg-unassistedPct'].value='20';
+domNodes['cfg-oneAssistPct'].value='45';
+evaluate('updateAssistStatus()');
+assert.match(assistIndicator.textContent,/Two-assist goals: 35%/);
+assert.match(assistIndicator.className,/odds-valid/);
+
+sandbox.saveClicks=0;
+evaluate("saveSettings=()=>{saveClicks++};handleClick({target:{closest:selector=>selector==='button'?{id:'',dataset:{saveSettings:''}}:null}})");
+assert.equal(sandbox.saveClicks,1);
+console.log('PASS: live two-assist validation, both whole-page save controls, and save handler');
