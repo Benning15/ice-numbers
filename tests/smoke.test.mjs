@@ -234,17 +234,17 @@ assert.ok(settingsHtml.indexOf('data-save-settings')>settingsHtml.indexOf('Playo
 
 const assistIndicator={className:'',textContent:''};
 sandbox.document.querySelector=selector=>selector==='[data-assist-status]'?assistIndicator:null;
-domNodes['cfg-unassistedPct'].value='6';
-domNodes['cfg-oneAssistPct'].value='19';
+sandbox.document.getElementById('cfg-unassistedPct').value='6';
+sandbox.document.getElementById('cfg-oneAssistPct').value='19';
 evaluate('updateAssistStatus()');
 assert.match(assistIndicator.textContent,/Two-assist goals: 75%/);
 assert.match(assistIndicator.className,/odds-valid/);
-domNodes['cfg-unassistedPct'].value='82';
+sandbox.document.getElementById('cfg-unassistedPct').value='82';
 evaluate('updateAssistStatus()');
 assert.match(assistIndicator.className,/odds-invalid/);
 assert.match(assistIndicator.textContent,/Invalid/);
-domNodes['cfg-unassistedPct'].value='20';
-domNodes['cfg-oneAssistPct'].value='45';
+sandbox.document.getElementById('cfg-unassistedPct').value='20';
+sandbox.document.getElementById('cfg-oneAssistPct').value='45';
 evaluate('updateAssistStatus()');
 assert.match(assistIndicator.textContent,/Two-assist goals: 35%/);
 assert.match(assistIndicator.className,/odds-valid/);
