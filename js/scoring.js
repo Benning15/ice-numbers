@@ -56,17 +56,51 @@ function scoringPlay(team,stage,game,changed){
  for(const id of assisterIds){let p=ensurePlayer(players.find(p=>p.id===id));p[stage==='regular'?'regAssists':'playoffAssists']++;changed?.set(p.id,p)}
  return {teamId:team.id,scorerId,scorerName:scorerId===null?'Unnamed skater':players.find(p=>p.id===scorerId)?.name,assistIds:assisterIds,assistNames:assisterIds.map(id=>players.find(p=>p.id===id)?.name),anonymousAssists,assistsCount:numAssists};
 }
+// Uncapped roster strength gives deeper teams additional *scoring chances*.
+// The original capped bonus still decides winners and standings. At default
+// strength 1, a +24 roster (vs a +8 cap) with a maximum roll expects one
+// extra goal; a half-size roll expects half a goal, before score limits.
+function offensiveDepthExpectation(team,roll,settings=state.settings){
+ const strength=Number(settings.offensiveDepthStrength??1);
+ if(!(strength>0)||!(roll>0))return 0;
+ const uncapped=team.roster.reduce((total,p)=>total+p.bonus,0);
+ const excess=Math.max(0,uncapped-settings.maxBonus);
+ if(excess===0)return 0;
+ const rollFraction=Math.min(1,roll/Math.max(1,settings.rollMax));
+ return Math.min(3,excess/16*rollFraction*strength);
+}
+function extraOffensiveGoals(team,roll,settings=state.settings){
+ const expected=offensiveDepthExpectation(team,roll,settings);
+ if(!expected)return 0;
+ const whole=Math.floor(expected),fraction=expected-whole;
+ return whole+(fraction>0&&random()<fraction?1:0);
+}
 function generateScore(a,b,g,changed){
+ const cap=Math.max(2,Math.floor(state.settings.maxGoalsPerTeam??9));
  const lower=Math.min(g.rollA,g.rollB);
- const losingGoals=clamp(Math.round(1+lower*.19+(random()-.5)*2.8),0,6);
+ let losingGoals=clamp(Math.round(1+lower*.19+(random()-.5)*2.8),0,Math.min(6,cap-1));
  let margin;
  if(g.coin)margin=1;
  else{const difference=Math.abs(g.totalA-g.totalB);margin=clamp(Math.round(difference/3.8+(random()-.5)*1.7),1,7)}
- // Nine goals is the ceiling. Very rarely, a team already on 7 or 8
- // goals has a scoring surge of 1–3 extra goals. Keep OT games at +1.
- let winningGoals=clamp(losingGoals+margin,1,9);
- if(!g.coin&&winningGoals>=7&&winningGoals<9&&random()<.05){
-   winningGoals=Math.min(9,winningGoals+randint(1,3));
+ let winningGoals=clamp(losingGoals+margin,1,cap);
+ if(!g.coin&&winningGoals>=7&&winningGoals<cap&&random()<.05){
+   winningGoals=Math.min(cap,winningGoals+randint(1,3));
+ }
+
+ // The score boost is based on each team's own roll and uncapped player
+ // ratings, not on the team bonus used to decide the game. Playoff seeding
+ // bonuses cannot affect offensive depth.
+ const extraA=extraOffensiveGoals(a,g.rollA),extraB=extraOffensiveGoals(b,g.rollB);
+ const winnerExtra=g.winnerId===a.id?extraA:extraB;
+ const loserExtra=g.winnerId===a.id?extraB:extraA;
+ if(g.coin){
+   // Overtime must stay a one-goal result. A high-tempo depth boost raises
+   // both scores together rather than turning a coin flip into a blowout.
+   losingGoals=Math.min(cap-1,losingGoals+Math.max(winnerExtra,loserExtra));
+   winningGoals=losingGoals+1;
+ }else{
+   losingGoals=Math.min(cap-1,losingGoals+loserExtra);
+   winningGoals=Math.min(cap,Math.max(winningGoals+winnerExtra,losingGoals+1));
  }
  g.scoreA=g.winnerId===a.id?winningGoals:losingGoals;
  g.scoreB=g.winnerId===b.id?winningGoals:losingGoals;
