@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.15**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.16**.
 
 ## Project files
 
@@ -30,6 +30,12 @@ Before publishing changes:
 
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
+
+## Live Scoring Calculator estimates team goals (V1.3.16)
+
+The Settings **Live Scoring Calculator** now automatically projects a team's expected total goals from the selected example roster ratings instead of always assuming 3 goals per game. The projection uses a **deterministic 6,000-game sample** of the same rolls, winning-bonus cap, score-margin noise, overtime coin flips, goal ceilings, rare goal surges, and Offensive Depth bonuses as real regular-season games. The preview team faces a **representative +8/+1/+1 opponent**, so this is an approximate matchup-based team-goal forecast, **not** a guarantee of how many goals the actual league or another particular opponent will allow. It uses the current unsaved scoring settings and season length, updates instantly when example player ratings or rules change, and never advances the live universe's RNG or edits games.
+
+An **Auto-estimate from ratings and rules** checkbox is on by default. In automatic mode the team-goals field is read-only and reflects the projection. Uncheck it for a manual team-goals override (preserved while editing player ratings); check it again to resume automatic estimates. The estimated team goals feed into the existing goal/assist probability preview, including the separate hypothetical 25–40 personal goal target sliders. No real scoring mechanics, saved league settings, or archived statistics are changed by this calculator.
 
 ## Set as Default settings (V1.3.15)
 
