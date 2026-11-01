@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.12**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.13**.
 
 ## Project files
 
@@ -30,6 +30,16 @@ Before publishing changes:
 
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
+
+## Hidden individual goal targets (V1.3.13)
+
+Every newly generated or drafted player receives a **permanent individual record of their current hidden goal-scoring target**, randomly initialized to **25–35 goals per 30 games** at +8 rating and neutral Motivation, with the population mean of 30. Lower ratings and hidden Motivation scale the goal-scoring rate using the existing Goal talent curve. Targets are probabilistic expectations, not guaranteed season results; game scores and winners remain unchanged.
+
+**At the start of every later season**, each player's personal target moves independently by -2, -1, 0, +1 or +2, clamped to 25–35. The Settings page offers a **Maximum yearly target change** slider: 0 keeps individual targets fixed; 1 allows -1/0/+1; 2 (default) allows -2/-1/0/+1/+2. The target updates only once per season, not at every game, and is persisted in the saved player's hidden attributes. The per-player targets are not exposed in public player histories, annual rosters, or profiles.
+
+A +8 with Motivation 0 and target 25, 30 or 35 has a proportional goal-rate target of 25/30, 1.0 or 35/30 per game before normalizing to the actual team goals available. When teams cannot generate enough total goals to fulfill all featured targets, they share the goals probabilistically. Individual game rolls, regular season scoring, offensive depth, playoffs, and goal-event archives keep their original rules; only attribution of scorers changes.
+
+The Settings **Live Scoring Calculator** includes independent hypothetical target sliders (25–35) for three example players so the user can explore expected goals and assists without exposing or editing real hidden player targets. Newly created and active preexisting league players are supported: older players without these hidden attributes receive their first target at the next season boundary (not in the middle of saved playoffs); historical seasons are untouched.
 
 ## Default scoring calibration (V1.3.12)
 
