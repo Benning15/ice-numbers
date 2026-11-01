@@ -26,3 +26,31 @@
 .team-season-scroll table{min-width:620px}
 .team-season-scroll tbody tr{height:42px}
 .team-season-scroll thead th{position:sticky;top:0;z-index:2}
+
+/* V1.3: season celebrations, championship archives, career browsing and live odds. */
+.champion-celebration{text-align:center;padding:32px 20px 30px;border-color:#7d6137;background:linear-gradient(150deg,#1e2835,#101a2a)}
+.champion-trophy{font-size:54px;line-height:1.1;margin-bottom:14px}
+.champion-name{display:flex;justify-content:center;align-items:center;gap:16px;font-size:clamp(22px,3vw,34px);font-weight:800;letter-spacing:.02em;margin:15px auto 8px}
+.champion-name .team-mark.large{width:72px;height:72px}
+.champion-result{font-size:16px;font-weight:700;color:var(--accent2)}
+.champion-actions{justify-content:center;margin-top:25px}
+.championship-history-scroll{max-height:430px;overflow:auto;overscroll-behavior:contain;border:1px solid var(--stroke);border-radius:9px}
+.championship-history-scroll .tablewrap{overflow:visible;max-width:none}
+.championship-history-scroll table{min-width:680px}
+.championship-history-scroll thead th{position:sticky;top:0;z-index:3}
+.championship-history-scroll td:nth-child(2),.championship-history-scroll td:nth-child(3),.championship-history-scroll th:nth-child(2),.championship-history-scroll th:nth-child(3){text-align:left}
+.championship-history-scroll .repeat-champion{background:rgba(243,182,92,.08)}
+.championship-history-details>summary{cursor:pointer;font-size:17px;font-weight:700;margin-bottom:12px}
+.championship-history-details>summary:hover{color:var(--accent)}
+.player-search{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:12px 0}
+.player-search input{flex:1;min-width:180px;max-width:420px;background:#101c2e;color:var(--ink);border:1px solid var(--stroke);border-radius:8px;padding:10px 12px}
+.player-pages{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin:13px 0}
+.player-pages button{padding:7px 10px}
+.career-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.career-cards .stat{padding:13px}
+.career-cards .big{font-size:23px}
+.odds-status{font-size:12px;font-weight:700;margin:10px 0 0;padding:9px 12px;border-radius:8px;border:1px solid}
+.odds-valid{color:#90e4d6;background:#12302e;border-color:#365b59}
+.odds-invalid{color:#f2a1a6;background:#321e28;border-color:#744550}
+@media(max-width:900px){.career-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.champion-name{flex-direction:column;gap:10px}.championship-history-scroll table{min-width:680px}.player-pages{justify-content:center}}
