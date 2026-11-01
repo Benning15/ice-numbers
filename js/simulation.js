@@ -14,6 +14,7 @@ function nextRound(season){
 }
 function beginSeason(){
  if(state.activeSeason)throw Error('Finish the current playoffs before starting another regular season.');
+ state.seasonComplete=false;
  const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(),events=[],rosterStart={};
  // Last-place team drafts first, then may also spawn if its roster is not full.
  if(state.pendingDraftTeam!==null){let t=state.teams[state.pendingDraftTeam],pick=makeNewPlayer(t.id,'draft',year);if(t.roster.length>=s.maxRoster){let worst=t.roster.reduce((a,b)=>a.bonus<=b.bonus?a:b);t.roster=t.roster.filter(p=>p.id!==worst.id);worst.retireSeason=year-1;changed.set(worst.id,worst);events.push(`${t.name} released ${worst.name} (+${worst.bonus}) for a draft pick`)}t.roster.push(pick);changed.set(pick.id,pick);events.push(`${t.name} drafted ${pick.name} (+${pick.bonus}, Year 1)`)}
@@ -58,7 +59,7 @@ function finishSeason(){
   for(const p of t.roster){ensurePlayer(p);p.seasons++;if(isChamp)p.titles++;p.history.push({season:year,year:p.year,team:t.id,bonus:p.bonus,champion:isChamp});if(p.year>=s.careerLength){p.retireSeason=year;active.events.push(`${t.name}: ${p.name} retired (+${p.bonus})`)}else p.year++;changed.set(p.id,p)}
   t.roster=t.roster.filter(p=>!p.retireSeason);
  }
- state.season=year;state.activeSeason=null;
+ state.season=year;state.activeSeason=null;state.seasonComplete=true;
  return {result:{season:year,settings:clone(s),standings:active.standings,rounds:active.rounds,championId:champion,runnerUpId:runnerUp,lastId:last,rosters:active.rosters,events:active.events,gameCount:active.gameCount,coinCount:active.coinCount},players:[...changed.values()]}
 }
 function simulateSeason(){let all=[],changes=new Map();if(!state.activeSeason){let a=beginSeason();all.push(...a.games);for(let p of a.players)changes.set(p.id,p)}
