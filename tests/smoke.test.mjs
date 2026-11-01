@@ -399,3 +399,66 @@ evaluate("saveSettings=()=>{saveClicks++};handleClick({target:{closest:selector=
 assert.equal(sandbox.saveClicks,1);
 console.log('PASS: live two-assist validation, both whole-page save controls, and save handler');
 console.log('PASS: NHL-style 6/19/75 assist defaults for new universes');
+
+
+// Individual Seasons derive per-year scoring from archived schedules and goal
+// events. The same player can have multiple separate season performances.
+evaluate("state=initialState();var singleSim1=simulateSeason();var singleSim2=simulateSeason();view='players';playerHistoryMode='season';individualSeasonCache=null;singleSeasonSort='regPoints';singleSeasonDescending=true;playerPage=0;playerQuery='';getAll=async store=>store==='seasons'?[singleSim1.result,singleSim2.result]:[];getIndexAll=async(store,index,year)=>[...singleSim1.games,...singleSim2.games].filter(g=>g.season===year)");
+const singleRows=JSON.parse(await evaluate("individualSeasonRecords().then(rows=>JSON.stringify(rows))"));
+const expectedRosterCount=Number(evaluate("Object.values(singleSim1.result.rosters).flat().length+Object.values(singleSim2.result.rosters).flat().length"));
+assert.equal(singleRows.length,expectedRosterCount);
+assert.ok(singleRows.some(r=>r.season===1));
+assert.ok(singleRows.some(r=>r.season===2));
+const singles=singleRows.find(r=>r.season===1&&r.regular.gp>0);
+assert.ok(singles);
+const expectedSingle=JSON.parse(evaluate("(function(){\n const id='+singles.id+';\n const relevant=singleSim1.games.filter(g=>g.stage==='regular');\n return JSON.stringify({g:relevant.flatMap(g=>g.goalEvents||[]).filter(x=>x.scorerId===id).length,\n  a:relevant.flatMap(g=>g.goalEvents||[]).reduce((n,x)=>n+Number((x.assistIds||[]).includes(id)),0)});\n})()"));
+assert.equal(singles.regular.g,expectedSingle.g);
+assert.equal(singles.regular.a,expectedSingle.a);
+assert.equal(singles.regular.gp,Number(evaluate("state.settings.gamesPerTeam")));
+assert.ok(singleRows.some(r=>singleRows.filter(o=>o.id===r.id).length>1),'players should appear separately in multiple seasons');
+assert.equal(singleRows.every(r=>r.regular.complete&&r.playoff.complete),true);
+const sortedSingle=JSON.parse(evaluate("JSON.stringify(individualSeasonCache.rows.slice().sort(individualSeasonCompare).map(r=>({id:r.id,season:r.season,pts:r.regular.g+r.regular.a})))"));
+assert.ok(sortedSingle.every((r,i)=>!i||r.pts<=sortedSingle[i-1].pts));
+await evaluate("playerIndividualSeasons()");
+const individualMarkup=domNodes.app.innerHTML;
+assert.match(individualMarkup,/Individual Seasons:/);
+assert.match(individualMarkup,/id="player-history-mode"/);
+assert.match(individualMarkup,/Individual Seasons<\/option>/);
+assert.match(individualMarkup,/id="single-season-sort"/);
+assert.match(individualMarkup,/data-single-season-sort="regGoals"/);
+assert.match(individualMarkup,/data-single-season-sort="regAssists"/);
+assert.match(individualMarkup,/data-single-season-sort="pointsPerGame"/);
+assert.match(individualMarkup,/data-year="1"/);
+assert.match(individualMarkup,/data-player="\d+"/);
+assert.match(individualMarkup,/data-player-page="1"/);
+assert.equal((individualMarkup.match(/<th\b/g)||[]).length,15);
+assert.equal((individualMarkup.match(/<\/th>/g)||[]).length,15);
+assert.ok((individualMarkup.match(/<tr>/g)||[]).length>2);
+const careerSortBefore=evaluate('playerSort');
+evaluate("render=()=>{};handleClick({target:{closest:(sel)=>sel==='th[data-single-season-sort]'?{dataset:{singleSeasonSort:'regGoals'}}:null}})");
+assert.equal(evaluate('singleSeasonSort'),'regGoals');
+assert.equal(evaluate('singleSeasonDescending'),true);
+evaluate("handleClick({target:{closest:(sel)=>sel==='th[data-single-season-sort]'?{dataset:{singleSeasonSort:'regGoals'}}:null}})");
+assert.equal(evaluate('singleSeasonDescending'),false);
+assert.equal(evaluate('playerSort'),careerSortBefore);
+
+evaluate("playerQuery='unlikely_name_no_match_123';playerPage=0");
+await evaluate("playerIndividualSeasons()");
+assert.match(domNodes.app.innerHTML,/No matching seasons yet/);
+evaluate("playerQuery='';playerPage=0;playerHistoryMode='career'");
+evaluate("getAll=async store=>store==='players'?singleSim2.players:[]");
+await evaluate("players()");
+assert.match(domNodes.app.innerHTML,/Combined Seasons \(Career\)/);
+assert.match(domNodes.app.innerHTML,/id="player-sort"/);
+assert.doesNotMatch(domNodes.app.innerHTML,/id="single-season-sort"/);
+
+// Older game archives without individual scoring plays are marked unavailable,
+// not silently recorded as zero goal or assist seasons.
+evaluate("view='players';playerHistoryMode='season';individualSeasonCache=null;getAll=async store=>store==='seasons'?[singleSim1.result]:[];getIndexAll=async()=>singleSim1.games.map((g,i)=>i===0?({...g,goalEvents:undefined}):g)");
+const legacySingles=JSON.parse(await evaluate("individualSeasonRecords().then(rows=>JSON.stringify(rows))"));
+assert.ok(legacySingles.some(r=>!r.regular.complete));
+assert.equal(evaluate("individualSeasonValue(individualSeasonCache.rows.find(r=>!r.regular.complete),'regPoints')"),null);
+await evaluate("playerIndividualSeasons()");
+assert.match(domNodes.app.innerHTML,/shown as —/);
+assert.match(domNodes.app.innerHTML,/<td>—<\/td>/);
+console.log('PASS: Individual Seasons dropdown, scoring histories, columns, search, pagination and incomplete archives');
