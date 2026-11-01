@@ -16,6 +16,8 @@ function beginSeason(){
  if(state.activeSeason)throw Error('Finish the current playoffs before starting another regular season.');
  state.seasonComplete=false;
  const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(),events=[],rosterStart={};
+ // Relearn team goal pace each year as roster strength and league balance change.
+ for(const t of state.teams){t.scoringGF=0;t.scoringGP=0;}
  // Brand-new universes begin with 1–3 players per team (15% / 50% / 35%).
  // This runs once at the first Season 1 simulation, not when the empty state
  // is created, so the initial teams/settings are still editable beforehand.
