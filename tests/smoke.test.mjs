@@ -411,7 +411,7 @@ assert.ok(singleRows.some(r=>r.season===1));
 assert.ok(singleRows.some(r=>r.season===2));
 const singles=singleRows.find(r=>r.season===1&&r.regular.gp>0);
 assert.ok(singles);
-const expectedSingle=JSON.parse(evaluate("(function(){\n const id='+singles.id+';\n const relevant=singleSim1.games.filter(g=>g.stage==='regular');\n return JSON.stringify({g:relevant.flatMap(g=>g.goalEvents||[]).filter(x=>x.scorerId===id).length,\n  a:relevant.flatMap(g=>g.goalEvents||[]).reduce((n,x)=>n+Number((x.assistIds||[]).includes(id)),0)});\n})()"));
+const expectedSingle=JSON.parse(evaluate("(function(){const id="+singles.id+";const relevant=singleSim1.games.filter(g=>g.stage==='regular');return JSON.stringify({g:relevant.flatMap(g=>g.goalEvents||[]).filter(x=>x.scorerId===id).length,a:relevant.flatMap(g=>g.goalEvents||[]).reduce((n,x)=>n+Number((x.assistIds||[]).includes(id)),0)});})()"));
 assert.equal(singles.regular.g,expectedSingle.g);
 assert.equal(singles.regular.a,expectedSingle.a);
 assert.equal(singles.regular.gp,Number(evaluate("state.settings.gamesPerTeam")));
