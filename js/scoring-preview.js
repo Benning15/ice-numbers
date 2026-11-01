@@ -65,7 +65,7 @@ function updateScoringPreview(){
  if(!output)return;
  for(const k of ['goalExponent','assistExponent']){
    const cfg=$('cfg-'+k),range=$('strength-'+k),label=$('value-'+k);
-   if(cfg&&range&&Number.isFinite(Number(cfg.value))&&cfg.value.trim()!=='')range.value=cfg.value;
+   if(cfg&&range&&typeof cfg.value==='string'&&cfg.value.trim()!==''&&Number.isFinite(Number(cfg.value)))range.value=cfg.value;
    if(label)label.textContent=cfg&&typeof cfg.value==='string'&&cfg.value.trim()!==''&&Number.isFinite(Number(cfg.value))?Number(cfg.value).toFixed(2):'—';
  }
  const numbers=['goalExponent','assistExponent','unnamedWeight','unassistedPct','oneAssistPct'].map(k=>$('cfg-'+k));
@@ -100,7 +100,7 @@ function applyScoringPreset(name){
  if(!values)return;
  for(const [i,k] of ['goalExponent','assistExponent'].entries()){
   const el=$('cfg-'+k);
-  if(el)el.value=values[i];
+  if(el)el.value=String(values[i]);
  }
  updateScoringPreview();
 }
