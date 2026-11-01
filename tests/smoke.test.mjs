@@ -31,6 +31,14 @@ assert.equal(teamNames.length, 16);
 assert.equal(teamNames[0], 'Estevan Bruins');
 assert.equal(teamNames[15], 'Prince Albert Eagles');
 
+// NHL-style assist defaults apply to newly created leagues.
+assert.equal(evaluate('DEFAULTS.unassistedPct'),6);
+assert.equal(evaluate('DEFAULTS.oneAssistPct'),19);
+assert.equal(evaluate('initialState().settings.unassistedPct'),6);
+assert.equal(evaluate('initialState().settings.oneAssistPct'),19);
+assert.deepEqual(JSON.parse(evaluate('JSON.stringify(assistDistribution(6,19))')),{valid:true,two:75});
+
+
 for (const gamesPerTeam of [30, 45, 60]) {
   const results = evaluate(`state=initialState();state.settings.gamesPerTeam=${gamesPerTeam};var reports=[];for(let n=0;n<12;n++){const sim=simulateSeason();reports.push({season:state.season,records:sim.result.standings.map(x=>({played:x.played,w:x.w,l:x.l,otl:x.otl,points:x.points})),games:sim.games.map(x=>({stage:x.stage,aId:x.aId,bId:x.bId,winnerId:x.winnerId,rollA:x.rollA,rollB:x.rollB,coin:x.coin,scoreA:x.scoreA,scoreB:x.scoreB,bonusA:x.bonusA,bonusB:x.bonusB,goalCount:(x.goalEvents||[]).length})),champion:sim.result.championId});}reports`);
   assert.equal(results.length, 12);
@@ -224,6 +232,10 @@ assert.match(evaluate("assistStatusHtml(70,40)"),/odds-invalid/);
 
 evaluate("view='settings';state=initialState();settings()");
 const settingsHtml=domNodes.app.innerHTML;
+assert.match(settingsHtml,/id="cfg-unassistedPct"[^>]*value="6"/);
+assert.match(settingsHtml,/id="cfg-oneAssistPct"[^>]*value="19"/);
+assert.match(settingsHtml,/Two-assist goals: 75%/);
+
 assert.match(settingsHtml,/data-assist-status/);
 assert.match(settingsHtml,/settings-savebar/);
 assert.match(settingsHtml,/id="save-settings"/);
@@ -253,3 +265,4 @@ sandbox.saveClicks=0;
 evaluate("saveSettings=()=>{saveClicks++};handleClick({target:{closest:selector=>selector==='button'?{id:'',dataset:{saveSettings:''}}:null}})");
 assert.equal(sandbox.saveClicks,1);
 console.log('PASS: live two-assist validation, both whole-page save controls, and save handler');
+console.log('PASS: NHL-style 6/19/75 assist defaults for new universes');
