@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.10**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.11**.
 
 ## Project files
 
@@ -30,6 +30,16 @@ Before publishing changes:
 
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
+
+## Goal distribution balancing (V1.3.11)
+
+A player with a displayed **+8 rating and neutral (0) hidden Motivation** now targets about **1 goal per team game**: approximately 30 goals over a 30-game regular season, independent of whether their team features one +8 player or three. This is an expected goal rate, **not an enforced minimum or fixed 30-goal outcome**. Individual seasons vary through random scorer selections, hidden year-specific Motivation and team scoring opportunities.
+
+Only the identity of the player credited with a goal changes. The original rolls, winning rules, score generation, Offensive Depth, goal ceiling and assist attribution algorithm remain untouched. The team cannot credit goals it did not actually score; if three +8 players are on a team that averages fewer than three goals/game, the combined target is mathematically impossible. These limitations are automatically reflected by normalizing scorer probabilities to available team goals.
+
+The scoring pool uses relative individual goal rates `((max(0,rating+Motivation)+1)/9) ^ goalExponent`, anchored so a neutral +8 has relative rate 1. It assigns the remaining team goals to unnamed skaters, adjusting the share as the team's observed scoring pace changes during the season. A two-game prior prevents the earliest games from distorting estimated scoring pace. **Goal talent curve** controls scoring rates for other ratings relative to +8; **Assist star strength** retains the previous independent assist behavior; **Unnamed skater scoring weight** changes remaining goal shares relative to the default 8. Hidden Motivation continues to affect both goal and assist production.
+
+The Live Scoring Calculator now uses these same neutral goal-rate allocations, with its manually entered assumed team goals per season providing the expected team goal pace. Existing history is never rewritten; new scoring applies only to games simulated after this release. The team's observed current-season scoring pace is stored in the normal league save and resets when a new season begins.
 
 ## Randomized starting rosters (V1.3.10)
 
