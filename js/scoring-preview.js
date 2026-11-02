@@ -1,8 +1,8 @@
 'use strict';
 
-// Settings-only analytical preview. Expected goals use the same neutral
-// per-player goal targets as scoringPlay with the user-supplied team GF pace.
-// Assists still use the exact weighted scorer-exclusion and assister rules.
+// Settings-only preview uses the exact same scorer and assister weighting
+// as scoringPlay, with example hidden goal/assist tendencies and neutral
+// Motivation. Team goals are still estimated separately from game rolls.
 const SCORING_PRESETS={
  balanced:[1,1],
  moderate:[1.15,1.2],
@@ -54,13 +54,10 @@ function scoringPreviewTeamGoals(ratings,settings,gamesPerTeam=settings.gamesPer
  }
  return Math.round(goals/samples*gamesPerTeam);
 }
-function scoringPreviewOdds(ratings,goalExponent,assistExponent,unnamedWeight,unassistedPct,oneAssistPct,teamGoals=90,gamesPerTeam=30,personalTargets=[30,30,30]){
- const featuredGoalRates=ratings.map((v,i)=>v>0?Math.pow((v+1)/9,goalExponent)*(personalTargets[i]??30)/30:0);
- const featuredTotal=featuredGoalRates.reduce((sum,v)=>sum+v,0);
- const expectedGF=teamGoals/Math.max(1,gamesPerTeam);
- const anonymousGoalRate=Math.max(0,expectedGF-featuredTotal)*(unnamedWeight/8);
- const goalWeights=featuredGoalRates.concat(anonymousGoalRate);
- const assistWeights=ratings.map(v=>v>0?Math.pow(v+1,assistExponent):0).concat(unnamedWeight);
+function scoringPreviewOdds(ratings,goalExponent,assistExponent,unnamedWeight,unassistedPct,oneAssistPct,teamGoals=90,gamesPerTeam=30,goalTendencies=[50,50,50]){
+ const featuredGoalRates=ratings.map((v,i)=>v>0?scoringWeight({bonus:v,goalTendency:goalTendencies[i]??50},false,{goalExponent}):0);
+ const goalWeights=featuredGoalRates.concat(unnamedWeight*2);
+ const assistWeights=ratings.map((v,i)=>v>0?scoringWeight({bonus:v,goalTendency:goalTendencies[i]??50},true,{assistExponent}):0).concat(unnamedWeight);
  const goalSum=goalWeights.reduce((a,b)=>a+b,0);
  const goals=goalWeights.map(v=>v/goalSum);
  const assists=[0,0,0,0];
@@ -86,13 +83,13 @@ function scoringPreviewOdds(ratings,goalExponent,assistExponent,unnamedWeight,un
 }
 function scoringPreviewMarkup(s){
  const ratings=[8,8,7];
- const select=(v,i)=>'<div class="control"><label for="preview-rating-'+i+'">Player '+('ABC'[i])+' rating</label><select id="preview-rating-'+i+'" class="select" data-preview-rating="'+i+'"><option value="0">Empty slot (no player)</option>'+Array.from({length:8},(_,j)=>'<option value="'+(j+1)+'" '+(j+1===v?'selected':'')+'>+'+(j+1)+'</option>').join('')+'</select></div>'+ '<div class="control"><label for="preview-target-'+i+'">Player '+('ABC'[i])+' example target: <strong id="preview-target-label-'+i+'">30</strong></label><input id="preview-target-'+i+'" type="range" min="25" max="40" step="1" value="30" aria-label="Player '+('ABC'[i])+' example personal goal target"></div>';
+ const select=(v,i)=>'<div class="control"><label for="preview-rating-'+i+'">Player '+('ABC'[i])+' rating</label><select id="preview-rating-'+i+'" class="select" data-preview-rating="'+i+'"><option value="0">Empty slot (no player)</option>'+Array.from({length:8},(_,j)=>'<option value="'+(j+1)+'" '+(j+1===v?'selected':'')+'>+'+(j+1)+'</option>').join('')+'</select></div>'+ '<div class="control"><label for="preview-tendency-'+i+'">Player '+('ABC'[i])+' example style: <strong id="preview-tendency-label-'+i+'">50% goals / 50% assists</strong></label><input id="preview-tendency-'+i+'" type="range" min="20" max="80" step="1" value="50" aria-label="Player '+('ABC'[i])+' example goal tendency"></div>';
  return '<section class="scoring-preview" aria-label="Live scoring calculator">'+
   '<h3>Live scoring calculator</h3>'+
-  '<p class="help">Choose one, two or three featured players to see who receives goals and assists. Select Empty slot for missing players. This is a preview only — it does not generate players or change game results. Personal goal target sliders below are examples, not edits to real players. Actual targets stay hidden and shift gradually each season. Neutral Motivation (0) is assumed.</p>'+
+  '<p class="help">Choose one, two or three featured players to see who receives goals and assists. Select Empty slot for missing players. This is a preview only — it does not generate players or change game results. The goal-versus-assist sliders show hypothetical player styles. Actual tendencies are permanent, randomly assigned and hidden. Neutral Motivation (0) is assumed.</p>'+
   '<div class="scoring-preview-controls">'+ratings.map(select).join('')+
   '<div class="control"><label for="preview-team-goals">Projected team goals in season</label><input type="number" id="preview-team-goals" min="1" max="2000" step="1" value="'+scoringPreviewTeamGoals(ratings,s,s.gamesPerTeam)+'" readonly><label class="sub tiny" for="preview-auto-goals"><input id="preview-auto-goals" type="checkbox" checked> Auto-estimate from ratings and rules</label></div></div>'+
-  '<p class="help">Automatic team-goal estimates follow the game’s roll, scoring-margin, overtime, Offensive Depth and goal-cap rules. The example team faces a representative +8/+1/+1 opponent across many simulated matchups. This is a projection, not a guarantee or an analysis of actual league opponents. Uncheck Auto-estimate to enter your own team goals. Real players have hidden targets and Motivation.</p>'+
+  '<p class="help">Automatic team-goal estimates follow the game’s roll, scoring-margin, overtime, Offensive Depth and goal-cap rules. The example team faces a representative +8/+1/+1 opponent across many simulated matchups. This is a projection, not a guarantee or an analysis of actual league opponents. Uncheck Auto-estimate to enter your own team goals. Real players have hidden scoring styles and Motivation.</p>'+
   '<div class="scoring-presets"><span class="sub tiny">Quick presets:</span>'+
   '<button type="button" data-scoring-preset="balanced">Balanced</button>'+
   '<button type="button" data-scoring-preset="moderate">Moderate</button>'+
@@ -158,9 +155,9 @@ function updateScoringPreview(){
  if(teamGoalsEl.value.trim()===''||!Number.isInteger(teamGoals)||teamGoals<1||teamGoals>2000){
   output.innerHTML='<p class="odds-status odds-invalid">Enter team goals between 1 and 2000, or enable Auto-estimate.</p>';return;
  }
- const personalTargets=[0,1,2].map(i=>{const el=$('preview-target-'+i),value=Number(el?.value);const target=Number.isInteger(value)&&value>=25&&value<=40?value:30;const occupied=ratings[i]>0;const label=$('preview-target-label-'+i);if(label)label.textContent=occupied?String(target):'—';if(el)el.disabled=!occupied;return target});
- const result=scoringPreviewOdds(ratings,goalExp,assistExp,unnamed,zero,one,teamGoals,gamesPerTeam,personalTargets);
- const items=ratings.flatMap((r,i)=>r>0?[{name:'Player '+('ABC'[i])+' (+'+r+', target '+personalTargets[i]+')',i}]:[]).concat({name:'Unnamed skaters',i:3});
+ const goalTendencies=[0,1,2].map(i=>{const el=$('preview-tendency-'+i),value=Number(el?.value);const tendency=Number.isInteger(value)&&value>=20&&value<=80?value:50;const occupied=ratings[i]>0;const label=$('preview-tendency-label-'+i);if(label)label.textContent=occupied?tendency+'% goals / '+(100-tendency)+'% assists':'—';if(el)el.disabled=!occupied;return tendency});
+ const result=scoringPreviewOdds(ratings,goalExp,assistExp,unnamed,zero,one,teamGoals,gamesPerTeam,goalTendencies);
+ const items=ratings.flatMap((r,i)=>r>0?[{name:'Player '+('ABC'[i])+' (+'+r+', '+goalTendencies[i]+'/'+(100-goalTendencies[i])+')',i}]:[]).concat({name:'Unnamed skaters',i:3});
  const rows=items.map(({name,i})=>{
    const share=result.goals[i]*100;
    return '<tr><td class="preview-name">'+name+'<div class="preview-meter"><span style="width:'+share.toFixed(1)+'%"></span></div></td>'+
@@ -171,7 +168,7 @@ function updateScoringPreview(){
  output.innerHTML='<p class="sub tiny">'+(auto?'Auto-estimated':'Manually assumed')+' <b>'+fmt(teamGoals)+'</b> team goals over '+fmt(gamesPerTeam)+' games &middot; '+result.assistsPerGoal.toFixed(2)+' assists per goal</p>'+
   '<div class="tablewrap"><table class="preview-table"><thead><tr><th>Scorer</th><th>Goal chance</th><th>Goals</th><th>Assists</th><th>Points</th></tr></thead>'+
   '<tbody>'+rows+'</tbody></table></div>'+
-  '<p class="help">Only occupied player slots receive featured goals and assists; empty slots contribute nothing. A neutral +8 starts with a hidden personal target in the 25–35 range, averaging 30 across new players, and may develop as high as 40. Sliders here only explore hypothetical player tendencies; their real values are never shown. When expected team scoring is too low to support all featured goal targets, the goals must be shared. A scorer cannot assist their own goal, and each named player can earn at most one assist per goal. This is a mathematical preview, not a guaranteed result.</p>';
+  '<p class="help">Empty player slots contribute nothing. Higher ratings earn more of the available scoring points; each hypothetical 20/80–80/20 style changes the relative odds of goals versus assists. The displayed splits are selection weights, not guaranteed season percentages. Goals and assists always come from the actual team scoring events. A scorer cannot assist their own goal or earn both assists on the same play. This is a mathematical preview, not a guaranteed result.</p>';
 }
 function applyScoringPreset(name){
  const values=SCORING_PRESETS[name];
