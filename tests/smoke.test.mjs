@@ -114,66 +114,41 @@ console.log('PASS: new-universe 15/50/35 opening rosters, roster caps, archive l
 
 
 
-// Monte Carlo: each neutral +8 approaches one goal/game over independent
-// 30-game seasons whether their team has one or three +8 players.
-// Every goal event must still reconcile exactly to the published game score.
-const starBalance=JSON.parse(evaluate("(function(){\n const cases=[];\n for(const depth of [1,3])for(const starCount of [1,3])for(const rivalStars of [false,true]){\n  const sums=new Array(starCount).fill(0),examples=[];\n  for(let trial=0;trial<80;trial++){\n   state=initialState();state.rngState=123456+trial*1799;\n   state.settings.offensiveDepthStrength=depth;\n   state.settings.maxGoalsPerTeam=15;\n   state.teams[0].roster=Array.from({length:starCount},(_,i)=>({id:i+1,name:'Star '+i,bonus:8,motivation:0,regGoals:0,regAssists:0}));\n   state.teams[1].roster=(rivalStars?[8,8,8]:[2,2]).map((bonus,i)=>({id:10+i,name:'Rival '+i,bonus,motivation:0,regGoals:0,regAssists:0}));\n   for(let i=0;i<30;i++){\n    const records=[];\n    playGame(state.teams[0],state.teams[1],8,rivalStars?8:4,trial+1,'regular',0,0,i,records);\n    if(records[0].goalEvents.length!==records[0].scoreA+records[0].scoreB)throw Error('Goal event mismatch');\n   }\n   if(trial===0)examples.push(...state.teams[0].roster.map(p=>p.regGoals));\n   state.teams[0].roster.forEach((p,i)=>sums[i]+=p.regGoals);\n  }\n  cases.push({depth,starCount,rivalStars,mean:sums.map(n=>n/80),examples});\n }\n return JSON.stringify(cases);\n})()"));
-for(const item of starBalance){
- // Equal elite rosters with lower depth can score <3 total goals/game;
- // in that situation 3 goals/game across 3 stars is mathematically impossible.
- const min=item.starCount===3&&item.rivalStars&&item.depth===1?26:27;
- assert.ok(item.mean.every(n=>n>=min&&n<=34),JSON.stringify(item));
- if(item.starCount===3)assert.ok(new Set(item.examples).size>1,'three stars must have different random goal totals');
-}
-const projectedStars=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,8],1.35,1.2,8,6,19,120,30))"));
-assert.ok(projectedStars.goals.slice(0,3).every(p=>Math.abs(p*120-30)<1e-8));
-assert.ok(Math.abs(projectedStars.goals.reduce((a,b)=>a+b,0)-1)<1e-9);
-const namedShare=JSON.parse(evaluate("(function(){state=initialState();state.settings.unnamedWeight=8;const p={id:1,bonus:8,motivation:0};const one={roster:[p],scoringGF:30,scoringGP:10};const trio={roster:[p,{...p,id:2},{...p,id:3}],scoringGF:40,scoringGP:10};return JSON.stringify({one:goalScorerPool(one),trio:goalScorerPool(trio)})})()"));
-const expectedOne=namedShare.one[1].weight/namedShare.one.reduce((n,p)=>n+p.weight,0);
-const expectedTrio=namedShare.trio[1].weight/namedShare.trio.reduce((n,p)=>n+p.weight,0);
-assert.ok(expectedOne>.25&&expectedOne<.4);
-assert.ok(expectedTrio>.20&&expectedTrio<.3);
-console.log('PASS: +8 target near 30 G in 30 GP on 1-star and 3-star teams, randomness and calibrated live preview');
-
-
-
-// V1.3.13: hidden individual goal tendencies and drift.
-assert.equal(evaluate('DEFAULTS.goalTargetAnnualChange'),2);
-const birthTargets=JSON.parse(evaluate("(function(){state=initialState();beginSeason();return JSON.stringify(state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,goalTarget:p.goalTarget,year:p.goalTargetSeason})))})()"));
-assert.ok(birthTargets.length>=16&&birthTargets.length<=48);
-assert.ok(birthTargets.every(p=>Number.isInteger(p.goalTarget)&&p.goalTarget>=25&&p.goalTarget<=35&&p.year===1));
-assert.ok(new Set(birthTargets.map(p=>p.goalTarget)).size>1,'players must have independent initial goal targets');
-const yearTwoTargets=JSON.parse(evaluate("\n(function(){\n state=initialState();\n const first=simulateSeason();\n const old=new Map(state.teams.flatMap(t=>t.roster).map(p=>[p.id,{target:p.goalTarget,season:p.goalTargetSeason}]));\n beginSeason();\n return JSON.stringify({old:[...old],next:state.teams.flatMap(t=>t.roster).filter(p=>old.has(p.id)).map(p=>({id:p.id,target:p.goalTarget,season:p.goalTargetSeason})),\n publicRosters:first.result.rosters,activeRosters:state.activeSeason.rosters});\n})()"));
-for(const row of yearTwoTargets.next){
- const previous=new Map(yearTwoTargets.old).get(row.id);
- assert.ok(previous&&Math.abs(row.target-previous.target)<=2,JSON.stringify(row));
- assert.ok(row.target>=25&&row.target<=40);
- assert.equal(row.season,2);
-}
-assert.ok(Object.values(yearTwoTargets.publicRosters).flat().every(p=>p.goalTarget===undefined&&p.goalTargetSeason===undefined));
-assert.ok(Object.values(yearTwoTargets.activeRosters).flat().every(p=>p.goalTarget===undefined&&p.goalTargetSeason===undefined));
-const targetEdges=JSON.parse(evaluate("\n(function(){\n const saved=random;\n try{\n  state=initialState();\n  const p=makeNewPlayer(0,'spawn',1);\n  const atBirth=p.goalTarget;\n  const before=state.rngState;\n  const skip=advancePersonalGoalTarget(p,1);\n  const noRoll=state.rngState===before;\n  p.goalTarget=25; p.goalTargetSeason=1;\n  random=()=>0;\n  advancePersonalGoalTarget(p,2);\n  const atLow=p.goalTarget;\n  p.goalTarget=35;p.goalTargetSeason=2;\n  random=()=>.999999;\n  advancePersonalGoalTarget(p,3);\n  const atHigh=p.goalTarget;\n  p.goalTarget=38;p.goalTargetSeason=3;\n  advancePersonalGoalTarget(p,4);\n  const atCap=p.goalTarget;\n  p.goalTarget=40;p.goalTargetSeason=4;\n  advancePersonalGoalTarget(p,5);\n  const cannotExceedCap=p.goalTarget;\n  p.goalTarget=30;p.goalTargetSeason=5;\n  state.settings.goalTargetAnnualChange=0;\n  random=()=>0;\n  advancePersonalGoalTarget(p,6);\n  const frozen=p.goalTarget;\n  p.goalTarget=30;p.goalTargetSeason=6;\n  state.settings.goalTargetAnnualChange=1;\n  advancePersonalGoalTarget(p,7);\n  const atMinusOne=p.goalTarget;\n  p.goalTarget=30;p.goalTargetSeason=7;\n  random=()=>.999999;\n  advancePersonalGoalTarget(p,8);\n  const atPlusOne=p.goalTarget;\n  return JSON.stringify({atBirth,skip,noRoll,atLow,atHigh,atCap,cannotExceedCap,frozen,atMinusOne,atPlusOne,season:p.goalTargetSeason});\n }finally{random=saved}\n})()"));
-assert.ok(targetEdges.atBirth>=25&&targetEdges.atBirth<=35);
-assert.equal(targetEdges.skip,false);
-assert.equal(targetEdges.noRoll,true);
-assert.equal(targetEdges.atLow,25);
-assert.equal(targetEdges.atHigh,37);
-assert.equal(targetEdges.atCap,40);
-assert.equal(targetEdges.cannotExceedCap,40);
-assert.equal(targetEdges.frozen,30);
-assert.equal(targetEdges.atMinusOne,29);
-assert.equal(targetEdges.atPlusOne,31);
-assert.equal(targetEdges.season,8);
-const oldTarget=JSON.parse(evaluate("\n(function(){\n state=initialState();beginSeason();\n const p=state.teams[0].roster[0];\n delete p.goalTarget;delete p.goalTargetSeason;\n const neutral=individualGoalRate({bonus:8,motivation:0});\n playNextGames();\n return JSON.stringify({neutral,absent:p.goalTarget===undefined,season:p.goalTargetSeason});\n})()"));
-assert.equal(oldTarget.neutral,1,'legacy saved players retain neutral 30-goal baseline during active playoffs');
-assert.equal(oldTarget.absent,true,'existing active season must not backfill hidden targets midplayoffs');
-const targetRate=JSON.parse(evaluate("JSON.stringify([25,30,35,40].map(goalTarget=>individualGoalRate({bonus:8,motivation:0,goalTarget})))"));
-assert.ok(targetRate.every((v,i)=>Math.abs(v-[25/30,1,35/30,40/30][i])<1e-10));
-const varied=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,8],1.35,1.2,8,6,19,120,30,[25,40,30]))"));
-assert.ok(Math.abs(varied.goals[0]*120-25)<1e-8);
-assert.ok(Math.abs(varied.goals[1]*120-40)<1e-8);
-assert.ok(Math.abs(varied.goals[2]*120-30)<1e-8);
-console.log('PASS: hidden 25–35 starting targets, gradual growth to 40, bounded yearly ±2 drift, ±1/0 settings, no midseason changes, calibrated preview');
+// V1.3.18 scoring model: goals/assists are randomly assigned from
+// actual team goal events using rating, Motivation and hidden scoring style.
+assert.equal(evaluate('DEFAULTS.goalTargetAnnualChange'),undefined);
+assert.equal(evaluate('typeof advancePersonalGoalTarget'),'undefined');
+const stylesCreated=JSON.parse(evaluate("(function(){state=initialState();beginSeason();return JSON.stringify(state.teams.flatMap(t=>t.roster).map(p=>({style:p.goalTendency,target:p.goalTarget})))})()"));
+assert.ok(stylesCreated.length>=16);
+assert.ok(stylesCreated.every(p=>Number.isInteger(p.style)&&p.style>=20&&p.style<=80&&p.target===undefined));
+assert.ok(new Set(stylesCreated.map(p=>p.style)).size>1);
+const styleWeights=JSON.parse(evaluate("JSON.stringify([20,50,80].map(goalTendency=>({g:scoringWeight({bonus:8,goalTendency}),a:scoringWeight({bonus:8,goalTendency},true)})))"));
+assert.ok(styleWeights[0].g<styleWeights[1].g&&styleWeights[1].g<styleWeights[2].g);
+assert.ok(styleWeights[0].a>styleWeights[1].a&&styleWeights[1].a>styleWeights[2].a);
+assert.equal(evaluate('scoringTendency({bonus:8})'),50);
+const pointsSample=JSON.parse(evaluate("\n(function(){\n state=initialState();state.rngState=4893001;\n const team={id:0,roster:[\n  {id:1,name:'Shooter',bonus:8,goalTendency:80,motivation:0,regGoals:0,regAssists:0},\n  {id:2,name:'Playmaker',bonus:8,goalTendency:20,motivation:0,regGoals:0,regAssists:0},\n  {id:3,name:'Support',bonus:1,goalTendency:50,motivation:0,regGoals:0,regAssists:0}\n ]};\n let valid=true,totalAssists=0;\n for(let i=0;i<10000;i++){\n  const play=scoringPlay(team,'regular',null);\n  const ids=[play.scorerId,...play.assistIds].filter(id=>id!==null);\n  if(new Set(ids).size!==ids.length||play.assistsCount>2||\n     play.assistIds.length+play.anonymousAssists!==play.assistsCount)valid=false;\n  totalAssists+=play.assistsCount;\n }\n return JSON.stringify({valid,totalAssists,players:team.roster});\n})()"));
+assert.equal(pointsSample.valid,true,'a player cannot occupy two point slots on one goal');
+assert.ok(pointsSample.totalAssists>16000&&pointsSample.totalAssists<17700,'assist counts retain 6/19/75 rates');
+assert.ok(pointsSample.players[0].regGoals>pointsSample.players[1].regGoals*2.5,'goal-oriented star scores more');
+assert.ok(pointsSample.players[1].regAssists>pointsSample.players[0].regAssists*1.7,'playmaker assists more');
+const stylePreview=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,1],1.35,1.2,8,6,19,110,30,[80,20,50]))"));
+assert.ok(stylePreview.goals[0]>stylePreview.goals[1]*2.5);
+assert.ok(stylePreview.assists[1]>stylePreview.assists[0]*1.7);
+assert.ok(Math.abs(stylePreview.goals.reduce((a,b)=>a+b,0)-1)<1e-10);
+assert.ok(Math.abs(stylePreview.assists.reduce((a,b)=>a+b,0)-1.69)<1e-10);
+const retained=JSON.parse(evaluate("(function(){state=initialState();const s=simulateSeason();const before=state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,style:p.goalTendency}));beginSeason();return JSON.stringify({before,after:state.teams.flatMap(t=>t.roster).map(p=>({id:p.id,style:p.goalTendency})),publicRosters:s.result.rosters,activeRosters:state.activeSeason.rosters})})()"));
+for(const p of retained.before){const current=retained.after.find(x=>x.id===p.id);if(current)assert.equal(p.style,current.style);}
+assert.ok(Object.values(retained.publicRosters).flat().every(p=>!('goalTendency' in p)));
+assert.ok(Object.values(retained.activeRosters).flat().every(p=>!('goalTendency' in p)));
+const oldStyle=JSON.parse(evaluate("(function(){state=initialState();const p=makeNewPlayer(0,'spawn',1);delete p.goalTendency;p.goalTarget=35;p.goalTargetSeason=1;state.teams[0].roster=[p];beginSeason();return JSON.stringify(state.teams[0].roster.find(x=>x.id===p.id))})()"));
+assert.ok(oldStyle.goalTendency>=20&&oldStyle.goalTendency<=80);
+assert.equal(oldStyle.goalTarget,undefined);
+assert.equal(oldStyle.goalTargetSeason,undefined);
+const existingPlayoff=JSON.parse(evaluate("(function(){state=initialState();beginSeason();const p=state.teams[0].roster[0];delete p.goalTendency;p.goalTarget=34;playNextGames();return JSON.stringify({style:p.goalTendency,target:p.goalTarget,rate:scoringTendency(p)})})()"));
+assert.equal(existingPlayoff.style,undefined);
+assert.equal(existingPlayoff.target,34);
+assert.equal(existingPlayoff.rate,50);
+console.log('PASS: 20–80 hidden player styles, rating-weighted goals and assists, no double point credits, migration of old targets');
 
 // Hidden Motivation: randomized per-player permanent ranges, annual rolls,
 // save/resume safety, stats-archive secrecy, and both goal/assist weighting.
@@ -198,7 +173,7 @@ assert.ok(Object.values(motNewSeason.publicHistory).flat().every(p=>!('motivatio
 const motWeights=JSON.parse(evaluate("(function(){state=initialState();return JSON.stringify([-2,0,2].map(m=>({goal:scoringWeight({bonus:8,motivation:m}),assist:scoringWeight({bonus:8,motivation:m},true)})))})()"));
 assert.ok(motWeights[0].goal<motWeights[1].goal&&motWeights[1].goal<motWeights[2].goal);
 assert.ok(motWeights[0].assist<motWeights[1].assist&&motWeights[1].assist<motWeights[2].assist);
-assert.equal(evaluate('scoringWeight({bonus:1,motivation:-2})'),1);
+assert.ok(evaluate('scoringWeight({bonus:1,motivation:-2})')>0);
 assert.equal(evaluate('scoringWeight({bonus:8,motivation:0})'),evaluate('scoringWeight({bonus:8})'));
 assert.equal(evaluate("bonusOf({roster:[{bonus:8,motivation:-2},{bonus:7,motivation:2}]})"),8);
 
@@ -441,13 +416,11 @@ evaluate("view='settings';state=initialState();settings()");
 const settingsHtml=domNodes.app.innerHTML;
 assert.match(settingsHtml,/id="cfg-offensiveDepthStrength"[^>]*step="0.25"[^>]*value="3"/);
 assert.match(settingsHtml,/id="cfg-maxGoalsPerTeam"[^>]*value="15"/);
-assert.match(settingsHtml,/id="cfg-goalTargetAnnualChange"[^>]*type="range"[^>]*min="0"[^>]*max="2"[^>]*value="2"/);
-assert.match(settingsHtml,/id="goal-target-drift-label"/);
-assert.match(settingsHtml,/id="preview-target-0"/);
-assert.match(settingsHtml,/id="preview-target-1"/);
-assert.match(settingsHtml,/id="preview-target-2"/);
-assert.match(settingsHtml,/id="preview-target-0"[^>]*max="40"/);
-
+assert.doesNotMatch(settingsHtml,/goalTargetAnnualChange|preview-tendency-0/);
+assert.match(settingsHtml,/Hidden player scoring styles/);
+assert.match(settingsHtml,/id="preview-tendency-0"[^>]*min="20"[^>]*max="80"/);
+assert.match(settingsHtml,/id="preview-tendency-1"/);
+assert.match(settingsHtml,/id="preview-tendency-2"/);
 assert.match(settingsHtml,/id="depth-preview"/);
 assert.match(domNodes['depth-preview'].textContent,/\+8 \/ \+8 \/ \+8 adding ~3\.00/);
 assert.match(settingsHtml,/Live scoring calculator/);
@@ -503,7 +476,7 @@ for(const [k,value] of Object.entries({
  'cfg-gamesPerTeam':'30','cfg-maxBonus':'8','cfg-rollMax':'12','cfg-offensiveDepthStrength':'3','cfg-maxGoalsPerTeam':'15',
  'cfg-goalExponent':'1.35','cfg-assistExponent':'1.2','cfg-unnamedWeight':'8','cfg-unassistedPct':'6','cfg-oneAssistPct':'19',
  'preview-rating-0':'8','preview-rating-1':'8','preview-rating-2':'7',
- 'preview-target-0':'30','preview-target-1':'30','preview-target-2':'30',
+ 'preview-tendency-0':'50','preview-tendency-1':'50','preview-tendency-2':'30',
  'preview-team-goals':'90'
 })){domNodes[k]??={innerHTML:'',textContent:''};domNodes[k].value=value;}
 domNodes['preview-auto-goals']??={innerHTML:'',textContent:''};
@@ -549,19 +522,19 @@ for(const [k,value] of [['preview-rating-0','8'],['preview-rating-1','0'],['prev
 domNodes['preview-auto-goals'].checked=true;
 evaluate('updateScoringPreview()');
 const soloPreview=domNodes['scoring-preview-results'].innerHTML;
-assert.match(soloPreview,/Player A \(\+8, target 30\)/);
+assert.match(soloPreview,/Player A \(\+8, 50/50\)/);
 assert.doesNotMatch(soloPreview,/Player B \(/);
 assert.doesNotMatch(soloPreview,/Player C \(/);
 assert.match(soloPreview,/Unnamed skaters/);
-assert.equal(domNodes['preview-target-1'].disabled,true);
-assert.equal(domNodes['preview-target-2'].disabled,true);
-assert.equal(domNodes['preview-target-label-2'].textContent,'—');
+assert.equal(domNodes['preview-tendency-1'].disabled,true);
+assert.equal(domNodes['preview-tendency-2'].disabled,true);
+assert.equal(domNodes['preview-tendency-label-2'].textContent,'—');
 domNodes['preview-rating-1'].value='7';
 evaluate('updateScoringPreview()');
 const duoPreview=domNodes['scoring-preview-results'].innerHTML;
-assert.match(duoPreview,/Player B \(\+7, target 30\)/);
+assert.match(duoPreview,/Player B \(\+7, 50/50\)/);
 assert.doesNotMatch(duoPreview,/Player C \(/);
-assert.equal(domNodes['preview-target-1'].disabled,false);
+assert.equal(domNodes['preview-tendency-1'].disabled,false);
 domNodes['preview-rating-0'].value='0';
 domNodes['preview-rating-1'].value='0';
 evaluate('updateScoringPreview()');
