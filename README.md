@@ -1,6 +1,6 @@
 # Ice Numbers
 
-A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.17**.
+A browser-based 16-team hockey league simulator focused on long-term statistics and history. Current version: **1.3.18**.
 
 ## Project files
 
@@ -31,15 +31,25 @@ Before publishing changes:
 GitHub Actions automatically runs syntax and simulation tests on each push to `main`.
 
 
+## Hidden goal-versus-assist scoring styles (V1.3.18)
+
+**Replaces the individual 25–40 goal-target system.** Team winners and final realistic scores continue to be determined by the original 0–12 rolls, capped win bonuses, uncapped Offensive Depth extra scoring, goalie score caps and overtime rules. The player allocation layer has changed: **every actual team goal awards one goal plus zero, one or two assists** (defaults: 6% / 19% / 75%). Each named player may receive at most one of those points on any goal; unnamed skaters can score or be assigned assists.
+
+Each newly spawned or drafted player receives a random, **permanent and hidden goal tendency of 20–80**, with assist tendency equal to `100 − goalTendency`. This is a **selection weight rather than a goal/assist statistical target or guaranteed points ratio**. For a goal, the player's weight combines `((max(0,rating+Motivation)+1)/9)^goalExponent × 8 × (goalTendency/50)`. For an assist, the weight is `(max(0,rating+Motivation)+1)^assistExponent × ((100−goalTendency)/50)`. Unnamed skaters receive a total goal-selection weight of `2 × unnamedWeight` and an assist-selection weight of `unnamedWeight`. The original Goal talent curve, Assist star strength and Unnamed skater weight remain independently adjustable. A player's Hidden Motivation still rerolls annually within their permanent range and affects how often their name appears on a scoring play; it does not affect team wins.
+
+The Settings **Live Scoring Calculator** now offers example **20–80% goal-versus-assist style sliders** for each occupied roster slot instead of goal-target sliders. These are examples only and never display or edit an actual player's hidden tendency. The existing automatic team-goal estimate, manual override and Empty slot choices all remain. The old **Maximum yearly goal-target change** setting is removed.
+
+**Existing universes, player history and backups are preserved.** Previous goal-event archives and career totals are untouched. Older players without scoring tendencies use the neutral 50/50 style for remaining games in any already-active season and receive their permanent randomized hidden style at the next season start. At that boundary their obsolete hidden `goalTarget` fields are discarded. Earlier historical goal-target behavior in the version notes below is obsolete as of 1.3.18.
+
 ## One-, two-, and three-player Live Scoring Calculator rosters (V1.3.17)
 
-The Live Scoring Calculator's three player-rating drop-downs now each include **Empty slot (no player)**. At least one featured player must be selected. Empty slots are *absent players*, not +0-rating featured players: they contribute no team rating/Offensive Depth bonus and have zero featured goal/assist probability. Empty players are omitted from the resulting scoring table, and their individual hypothetical goal-target sliders are disabled. The automatic projected team goals use only the actual selected players and respond immediately to changes. This allows modelling one or two named featured players alongside the existing three-player preview, while unnamed skaters continue to receive goals and assists as usual. The game's regular simulation, saved players, league settings and archives are unchanged.
+The Live Scoring Calculator's three player-rating drop-downs now each include **Empty slot (no player)**. At least one featured player must be selected. Empty slots are *absent players*, not +0-rating featured players: they contribute no team rating/Offensive Depth bonus and have zero featured goal/assist probability. Empty players are omitted from the resulting scoring table, and their example goal/assist style sliders are disabled. The automatic projected team goals use only the actual selected players and respond immediately to changes. This allows modelling one or two named featured players alongside the existing three-player preview, while unnamed skaters continue to receive goals and assists as usual. The game's regular simulation, saved players, league settings and archives are unchanged.
 
 ## Live Scoring Calculator estimates team goals (V1.3.16)
 
 The Settings **Live Scoring Calculator** now automatically projects a team's expected total goals from the selected example roster ratings instead of always assuming 3 goals per game. The projection uses a **deterministic 6,000-game sample** of the same rolls, winning-bonus cap, score-margin noise, overtime coin flips, goal ceilings, rare goal surges, and Offensive Depth bonuses as real regular-season games. The preview team faces a **representative +8/+1/+1 opponent**, so this is an approximate matchup-based team-goal forecast, **not** a guarantee of how many goals the actual league or another particular opponent will allow. It uses the current unsaved scoring settings and season length, updates instantly when example player ratings or rules change, and never advances the live universe's RNG or edits games.
 
-An **Auto-estimate from ratings and rules** checkbox is on by default. In automatic mode the team-goals field is read-only and reflects the projection. Uncheck it for a manual team-goals override (preserved while editing player ratings); check it again to resume automatic estimates. The estimated team goals feed into the existing goal/assist probability preview, including the separate hypothetical 25–40 personal goal target sliders. No real scoring mechanics, saved league settings, or archived statistics are changed by this calculator.
+An **Auto-estimate from ratings and rules** checkbox is on by default. In automatic mode the team-goals field is read-only and reflects the projection. Uncheck it for a manual team-goals override (preserved while editing player ratings); check it again to resume automatic estimates. The estimated team goals feed into the existing goal/assist probability preview, including the example hidden goal-versus-assist style sliders. No real scoring mechanics, saved league settings, or archived statistics are changed by this calculator.
 
 ## Set as Default settings (V1.3.15)
 
@@ -47,35 +57,19 @@ The Settings page has a **Set as Default** button next to **Save All Settings** 
 
 Browser-local default settings are kept in a separate IndexedDB `meta` record (`customSettingsDefaults`) and applied when a new league is created through **Start a new universe**, or when the application creates its initial league in that browser. Resetting a league or importing a backup preserves the local defaults record. Existing saved leagues and imported universes retain their own settings instead of being overwritten. These preferences are **not shared automatically across browsers or devices**, and are not embedded in full-league backup JSON files. Saving with **Set as Default** again replaces the previous preferred settings. Built-in defaults remain unchanged in `js/core.js`.
 
-## Player career scoring ceiling (V1.3.14)
+## Historical: retired personal goal targets (V1.3.13–1.3.14)
 
-New players **still start with a hidden target of 25–35 goals per 30 games**, but each later season they may gain or lose up to 2 target goals (default drift). The target now has a **career ceiling of 40** instead of 35, allowing an elite scorer who starts at 35 to develop to 37, 39, and eventually 40. The floor remains 25. The Live Scoring Calculator's hypothetical player targets now allow 25–40, while actual player targets remain hidden and archived game outcomes are unchanged. Player movement and newly created targets continue to be randomized per player, not guaranteed improvements.
-
-## Hidden individual goal targets (V1.3.13)
-
-Every newly generated or drafted player receives a **permanent individual record of their current hidden goal-scoring target**, randomly initialized to **25–35 goals per 30 games** at +8 rating and neutral Motivation, with the population mean of 30. Lower ratings and hidden Motivation scale the goal-scoring rate using the existing Goal talent curve. Targets are probabilistic expectations, not guaranteed season results; game scores and winners remain unchanged.
-
-**At the start of every later season**, each player's personal target moves independently by -2, -1, 0, +1 or +2, with a career range of 25–40 since V1.3.14 (originally capped at 35). The Settings page offers a **Maximum yearly target change** slider: 0 keeps individual targets fixed; 1 allows -1/0/+1; 2 (default) allows -2/-1/0/+1/+2. The target updates only once per season, not at every game, and is persisted in the saved player's hidden attributes. The per-player targets are not exposed in public player histories, annual rosters, or profiles.
-
-A +8 with Motivation 0 and target 25, 30 or 35 has a proportional goal-rate target of 25/30, 1.0 or 35/30 per game before normalizing to the actual team goals available. When teams cannot generate enough total goals to fulfill all featured targets, they share the goals probabilistically. Individual game rolls, regular season scoring, offensive depth, playoffs, and goal-event archives keep their original rules; only attribution of scorers changes.
-
-The Settings **Live Scoring Calculator** includes independent hypothetical target sliders (25–40) for three example players so the user can explore expected goals and assists without exposing or editing real hidden player targets. Newly created and active preexisting league players are supported: older players without these hidden attributes receive their first target at the next season boundary (not in the middle of saved playoffs); historical seasons are untouched.
+Those releases introduced and later expanded per-player 25–40 goal targets with annual ±2 movement. **This entire feature and its settings controls were replaced by permanent 20/80–80/20 goal-versus-assist tendencies in V1.3.18.** Saved historical goals and assists remain unchanged.
 
 ## Default scoring calibration (V1.3.12)
 
-**New universes** now default to **Offensive Depth Strength 3.0** and a **15-goal maximum per team per game**—the settings used when testing the +8 player goal target. The maximum Offensive Depth strength remains 3.0 (in 0.25 increments), and players can still select lower settings or switch the depth mechanic off.
+**New universes** now default to **Offensive Depth Strength 3.0** and a **15-goal maximum per team per game**—the settings used for offensive scoring calibration. The maximum Offensive Depth strength remains 3.0 (in 0.25 increments), and players can still select lower settings or switch the depth mechanic off.
 
 **Saved universes are not changed.** Their stored strength and cap remain as selected. For much older saves that predate these two settings, the pre-existing fallback of strength 1.0 and cap 9 is explicitly preserved on load, while new universes start with 3.0 and 15.
 
-## Goal distribution balancing (V1.3.11)
+## Historical: former +8 goal-rate calibration (V1.3.11)
 
-A player with a displayed **+8 rating and neutral (0) hidden Motivation** now targets about **1 goal per team game**: approximately 30 goals over a 30-game regular season, independent of whether their team features one +8 player or three. This is an expected goal rate, **not an enforced minimum or fixed 30-goal outcome**. Individual seasons vary through random scorer selections, hidden year-specific Motivation and team scoring opportunities.
-
-Only the identity of the player credited with a goal changes. The original rolls, winning rules, score generation, Offensive Depth, goal ceiling and assist attribution algorithm remain untouched. The team cannot credit goals it did not actually score; if three +8 players are on a team that averages fewer than three goals/game, the combined target is mathematically impossible. These limitations are automatically reflected by normalizing scorer probabilities to available team goals.
-
-The scoring pool uses relative individual goal rates `((max(0,rating+Motivation)+1)/9) ^ goalExponent`, anchored so a neutral +8 has relative rate 1. It assigns the remaining team goals to unnamed skaters, adjusting the share as the team's observed scoring pace changes during the season. A two-game prior prevents the earliest games from distorting estimated scoring pace. **Goal talent curve** controls scoring rates for other ratings relative to +8; **Assist star strength** retains the previous independent assist behavior; **Unnamed skater scoring weight** changes remaining goal shares relative to the default 8. Hidden Motivation continues to affect both goal and assist production.
-
-The Live Scoring Calculator now uses these same neutral goal-rate allocations, with its manually entered assumed team goals per season providing the expected team goal pace. Existing history is never rewritten; new scoring applies only to games simulated after this release. The team's observed current-season scoring pace is stored in the normal league save and resets when a new season begins.
+V1.3.11 experimented with approximately 30 goals per 30-game season for a neutral +8. This was later replaced by individual goal targets, then **fully retired in V1.3.18**. Current featured scorers are selected by player rating, Hidden Motivation and permanent goal/assist style; no explicit 30-goal target remains.
 
 ## Randomized starting rosters (V1.3.10)
 
