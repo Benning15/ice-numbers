@@ -26,31 +26,25 @@ function rollPlayerMotivation(p,season){
  p.motivationSeason=season;
  return true;
 }
-// Each player has their own hidden long-term goal-scoring tendency.
-// It begins at 25–35 goals per 30 games for a neutral +8 and can move
-// by -2, -1, 0, +1 or +2 at most once per new season (configurable max).
-// New players start at 25–35, but may develop as high as 40 over time.
-// These are probabilistic rates, never scripted or guaranteed goal counts.
-const PERSONAL_GOAL_TARGET_MIN=25,PERSONAL_GOAL_TARGET_START_MAX=35,PERSONAL_GOAL_TARGET_MAX=40;
-function advancePersonalGoalTarget(p,season,settings=state.settings){
- if(p.goalTargetSeason===season)return false;
- if(!Number.isInteger(p.goalTarget)||p.goalTarget<PERSONAL_GOAL_TARGET_MIN||p.goalTarget>PERSONAL_GOAL_TARGET_MAX){
-  // Legacy players only receive a target at the NEXT season boundary;
-  // their active saved playoff season stays unchanged.
-  p.goalTarget=randint(PERSONAL_GOAL_TARGET_MIN,PERSONAL_GOAL_TARGET_START_MAX);
- }else{
-  const maximum=Math.max(0,Math.min(2,Number(settings.goalTargetAnnualChange??DEFAULTS.goalTargetAnnualChange)));
-  p.goalTarget=Math.max(PERSONAL_GOAL_TARGET_MIN,Math.min(PERSONAL_GOAL_TARGET_MAX,p.goalTarget+randint(-maximum,maximum)));
- }
- p.goalTargetSeason=season;
+// Permanent, hidden goal-vs-assist style. Uniform 20–80 for new players;
+// a high number means a goal-oriented scorer, low means a playmaker.
+// Existing players get their tendency at the next season boundary. Archived
+// games and any current saved playoff scores are not rewritten.
+const GOAL_TENDENCY_MIN=20,GOAL_TENDENCY_MAX=80;
+function ensureScoringTendency(p){
+ if(Number.isInteger(p.goalTendency)&&p.goalTendency>=GOAL_TENDENCY_MIN&&p.goalTendency<=GOAL_TENDENCY_MAX)return false;
+ p.goalTendency=randint(GOAL_TENDENCY_MIN,GOAL_TENDENCY_MAX);
  return true;
+}
+function scoringTendency(p){
+ return Number.isInteger(p.goalTendency)&&p.goalTendency>=GOAL_TENDENCY_MIN&&p.goalTendency<=GOAL_TENDENCY_MAX?p.goalTendency:50;
 }
 function newPlayer(teamId,origin,season){
  const s=state.settings,[min,max]=motivationRange();
  return {id:state.nextPlayerId++,teamId,name:FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)],bonus:weighted(origin==='draft'?s.draftWeights:s.normalWeights),
  startingYear:origin==='draft'?1:randint(1,s.careerLength),year:0,origin,joinSeason:season,retireSeason:null,
  motivationMin:min,motivationMax:max,motivation:0,motivationSeason:null,
- goalTarget:randint(PERSONAL_GOAL_TARGET_MIN,PERSONAL_GOAL_TARGET_START_MAX),goalTargetSeason:season,
+ goalTendency:randint(GOAL_TENDENCY_MIN,GOAL_TENDENCY_MAX),
  seasons:0,regGames:0,regWins:0,regLosses:0,regOTL:0,regGoals:0,regAssists:0,playoffGoals:0,playoffAssists:0,playoffGames:0,playoffWins:0,playoffLosses:0,titles:0,history:[]};
 }
 function makeNewPlayer(teamId,origin,season){let p=newPlayer(teamId,origin,season);p.year=p.startingYear;return p}
@@ -59,35 +53,23 @@ function bonusOf(team){return Math.min(state.settings.maxBonus,team.roster.reduc
 function clamp(x,lo,hi){return Math.max(lo,Math.min(hi,x))}
 function ensurePlayer(p){for(const key of ['regGoals','regAssists','regOTL','playoffGoals','playoffAssists','regGames','regWins','regLosses','playoffGames','playoffWins','playoffLosses','seasons','titles'])p[key]??=0;return p}
 function pickWeighted(items){let sum=items.reduce((z,i)=>z+i.weight,0),v=random()*sum;for(const item of items){v-=item.weight;if(v<0)return item.id}return items[items.length-1].id}
-function scoringWeight(p,assist=false){const effective=Math.max(0,p.bonus+(Number.isInteger(p.motivation)?p.motivation:0));return Math.pow(effective+1,assist?(state.settings.assistExponent??1.2):(state.settings.goalExponent??1.35))}
-// Neutral +8 population target: an average of one goal per game, regardless of whether the
-// roster has one star or three. Actual individual years still vary through
-// random goal draws, hidden Motivation, team goal supply, and opponents.
-// The team's realized goals-per-game estimate is learned over the season;
-// a small two-game prior prevents the first game's probabilities from being
-// dictated by a single outlier. This only changes WHO scores, not game scores.
-function individualGoalRate(p,goalExponent=state.settings.goalExponent??1.35){
+// Each team goal is one scoring event. Named player scoring odds combine
+// rating + seasonal Motivation with permanent goal/assist tendencies.
+// The shared +8-relative calibration keeps unnamed skaters meaningfully
+// involved, while Offensive Depth and actual scores determine how many
+// points can be awarded. Nothing here guarantees an individual goal total.
+function scoringWeight(p,assist=false,settings=state.settings){
  const effective=Math.max(0,p.bonus+(Number.isInteger(p.motivation)?p.motivation:0));
- return Math.pow((effective+1)/9,goalExponent)*(Number.isInteger(p.goalTarget)?p.goalTarget:30)/30;
-}
-function scoringGoalsEstimate(team,settings=state.settings){
- const strength=Math.max(0,Number(settings.offensiveDepthStrength??DEFAULTS.offensiveDepthStrength));
- const depth=Math.max(0,team.roster.reduce((n,p)=>n+p.bonus,0)-settings.maxBonus);
- const startingEstimate=3+Math.min(3,depth/16*strength*.5);
- const gp=Math.max(0,Number(team.scoringGP||0));
- const gf=Math.max(0,Number(team.scoringGF||0));
- return (startingEstimate*2+gf)/(2+gp);
+ const tendency=scoringTendency(p);
+ if(assist)return Math.pow(effective+1,Number(settings.assistExponent??1.2))*(100-tendency)/50;
+ return Math.pow((effective+1)/9,Number(settings.goalExponent??1.35))*8*tendency/50;
 }
 function goalScorerPool(team,settings=state.settings){
- const featured=team.roster.map(p=>({id:p.id,weight:individualGoalRate(p,settings.goalExponent??1.35)}));
- const required=featured.reduce((sum,p)=>sum+p.weight,0);
- const expectedGF=scoringGoalsEstimate(team,settings);
- // Unnamed skaters take the goals not assigned to featured players.
- // Keep the existing Unnamed Weight control as a relative adjustment:
- // at its default of 8 it preserves the one-goal target; higher/lower
- // values deliberately redistribute goals toward/from unnamed players.
- const unnamed=Math.max(0,expectedGF-required)*(Number(settings.unnamedWeight??8)/8);
- return [{id:null,weight:unnamed},...featured];
+ // A full team includes many unnamed skaters: they receive twice the
+ // unnamed assist weight for GOAL selection to avoid crediting nearly
+ // every team goal to one star. Assist events still use the base weight.
+ return [{id:null,weight:Math.max(0,Number(settings.unnamedWeight??8))*2},
+  ...team.roster.map(p=>({id:p.id,weight:scoringWeight(p,false,settings)}))];
 }
 function scoringPlay(team,stage,game,changed){
  const players=team.roster;
