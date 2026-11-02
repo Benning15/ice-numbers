@@ -447,7 +447,7 @@ assert.ok(Math.abs(previewOdds.goals.reduce((a,b)=>a+b,0)-1)<1e-10);
 assert.ok(Math.abs(previewOdds.assists.reduce((a,b)=>a+b,0)-1.69)<1e-10);
 assert.ok(Math.abs(previewOdds.goals[0]-previewOdds.goals[1])<1e-12);
 assert.ok(previewOdds.goals[0]>previewOdds.goals[2]);
-assert.ok(previewOdds.goals[2]>previewOdds.goals[3]);
+assert.ok(previewOdds.goals[3]>previewOdds.goals[2], 'unnamed skaters collectively receive meaningful goals');
 assert.ok(previewOdds.assists.every(x=>x>=0));
 const plainAssist=JSON.parse(evaluate("JSON.stringify(scoringPreviewOdds([8,8,7],1.35,1.2,8,0,100))"));
 assert.ok(Math.abs(plainAssist.assists.reduce((a,b)=>a+b,0)-1)<1e-10);
