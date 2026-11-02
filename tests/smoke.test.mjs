@@ -681,7 +681,7 @@ const newLeagueSettings=JSON.parse(await evaluate("newUniverseState().then(next=
 assert.equal(newLeagueSettings.rollMax,29);
 assert.equal(newLeagueSettings.offensiveDepthStrength,2.5);
 assert.equal(newLeagueSettings.maxGoalsPerTeam,14);
-assert.equal(newLeagueSettings.goalTargetAnnualChange,1);
+assert.equal(newLeagueSettings.goalTargetAnnualChange,undefined,'old goal target settings are discarded on new leagues');
 assert.equal(newLeagueSettings.gamesPerTeam,30);
 sandbox.savedPreference=null;
 const builtInSettings=JSON.parse(await evaluate("newUniverseState().then(next=>JSON.stringify(next.settings))"));
