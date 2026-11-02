@@ -522,7 +522,7 @@ for(const [k,value] of [['preview-rating-0','8'],['preview-rating-1','0'],['prev
 domNodes['preview-auto-goals'].checked=true;
 evaluate('updateScoringPreview()');
 const soloPreview=domNodes['scoring-preview-results'].innerHTML;
-assert.match(soloPreview,/Player A \(\+8, 50/50\)/);
+assert.match(soloPreview,/Player A \(\+8, 50\/50\)/);
 assert.doesNotMatch(soloPreview,/Player B \(/);
 assert.doesNotMatch(soloPreview,/Player C \(/);
 assert.match(soloPreview,/Unnamed skaters/);
@@ -532,7 +532,7 @@ assert.equal(domNodes['preview-tendency-label-2'].textContent,'—');
 domNodes['preview-rating-1'].value='7';
 evaluate('updateScoringPreview()');
 const duoPreview=domNodes['scoring-preview-results'].innerHTML;
-assert.match(duoPreview,/Player B \(\+7, 50/50\)/);
+assert.match(duoPreview,/Player B \(\+7, 50\/50\)/);
 assert.doesNotMatch(duoPreview,/Player C \(/);
 assert.equal(domNodes['preview-tendency-1'].disabled,false);
 domNodes['preview-rating-0'].value='0';
