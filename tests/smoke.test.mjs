@@ -416,7 +416,7 @@ evaluate("view='settings';state=initialState();settings()");
 const settingsHtml=domNodes.app.innerHTML;
 assert.match(settingsHtml,/id="cfg-offensiveDepthStrength"[^>]*step="0.25"[^>]*value="3"/);
 assert.match(settingsHtml,/id="cfg-maxGoalsPerTeam"[^>]*value="15"/);
-assert.doesNotMatch(settingsHtml,/goalTargetAnnualChange|preview-tendency-0/);
+assert.doesNotMatch(settingsHtml,/goalTargetAnnualChange|preview-target-0/);
 assert.match(settingsHtml,/Hidden player scoring styles/);
 assert.match(settingsHtml,/id="preview-tendency-0"[^>]*min="20"[^>]*max="80"/);
 assert.match(settingsHtml,/id="preview-tendency-1"/);
