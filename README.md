@@ -39,6 +39,6 @@ An ordinary new league uses the V1.4 database (`IceNumbersV14`), separate from p
 
 ## Local verification
 
-Run `node tests/smoke.test.mjs` and `for file in js/*.js; do node --check "$file"; done`.
+Run `node tests/smoke.test.mjs` for quick validation; run `ICE_NUMBERS_STRESS=1 node tests/smoke.test.mjs` for a real 1,000-season benchmark. Then run `for file in js/*.js; do node --check "$file"; done`.
 
 The app is static HTML and JavaScript, with no build step. GitHub Actions checks JavaScript syntax and simulation tests on pull requests and changes to `main`.
