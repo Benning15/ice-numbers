@@ -105,6 +105,11 @@ const checkpoint1000=parsed("(function(){state=initialState();testingData().seas
 assert.equal(checkpoint1000.seasons,1000);
 console.log('PASS: 100/1000-season checkpoints and cumulative testing information');
 
+const benchmark=parsed("(function(){state=initialState();for(let i=0;i<1000;i++)simulateSeason();const t=testingData(),x=t.checkpoints[1000];return {season:x.seasons,teamPlus:x.teamPlus/x.teamSeasons,players:x.playerSeasons/x.teamSeasons,individual:x.individualPlus/x.playerSeasons,goalsPerGame:x.goals/x.games,highest:x.highestTeamPlus,highEffective:x.highestEffectiveTeamPlus,goalSeasons:t.goalSeasons,multigoal:t.multiGoalGames,twos:t.teamsWithTwoEight,threes:t.teamsWithThreeEight}})()");
+assert.equal(benchmark.season,1000);
+assert.ok(benchmark.goalsPerGame>1&&benchmark.goalsPerGame<25);
+assert.ok(benchmark.teamPlus>0&&benchmark.teamPlus<=24);
+console.log('PASS: 1,000 consecutive seasons measured: '+JSON.stringify(benchmark));
 const nodes={};
 sandbox.document={getElementById:id=>(nodes[id]??={innerHTML:'',textContent:''})};
 evaluate('state=initialState();testingInformation()');
