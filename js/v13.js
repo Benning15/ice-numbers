@@ -35,7 +35,7 @@ function playerLink(p){
 }
 function playerYearStats(p,entry,games){
  const teamId=entry.team??p.teamId;
- const result={season:entry.season,year:entry.year,teamId,rating:entry.bonus??p.bonus,champion:!!entry.champion,partial:!!entry.partial,regular:{gp:0,g:0,a:0,w:0},playoff:{gp:0,g:0,a:0,w:0},complete:true};
+ const result={season:entry.season,year:entry.year,teamId,rating:entry.bonus??p.bonus,ratingTier:entry.ratingTier||null,champion:!!entry.champion,partial:!!entry.partial,regular:{gp:0,g:0,a:0,w:0},playoff:{gp:0,g:0,a:0,w:0},complete:true};
  for(const g of games){
   if(!(g.teamIds||[g.aId,g.bId]).includes(teamId))continue;
   const dst=g.stage==='playoff'?result.playoff:result.regular;
@@ -59,7 +59,7 @@ async function playerProfile(){
  const entries=[...(p.history||[])];
  const a=state.activeSeason;
  if(a&&a.rosters?.[p.teamId]?.some(r=>r.id===p.id)&&!entries.some(e=>e.season===a.season)){
-  entries.push({season:a.season,year:p.year,team:p.teamId,bonus:p.bonus,champion:false,partial:true});
+  entries.push({season:a.season,year:p.year,team:p.teamId,bonus:p.bonus,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null,champion:false,partial:true});
  }
  entries.sort((x,y)=>x.season-y.season);
  const stats=await Promise.all(entries.map(async e=>playerYearStats(p,e,await getIndexAll('games','bySeason',e.season))));
@@ -69,7 +69,7 @@ async function playerProfile(){
  const statCells=(r,stage)=>{const x=r[stage];return '<td>'+fmt(x.gp)+'</td><td>'+(r.complete?fmt(x.g):'—')+'</td><td>'+(r.complete?fmt(x.a):'—')+'</td><td>'+(r.complete?fmt(x.g+x.a):'—')+'</td>'};
  const rows=stats.map(r=>'<tr><td><button class="linkbtn" data-year="'+r.season+'">'+r.season+'</button></td><td>'+teamLink(r.teamId)+'</td><td>+'+r.rating+'</td>'+statCells(r,'regular')+statCells(r,'playoff')+'<td>'+(r.champion?'🏆':r.partial?'<span class="sub tiny">In progress</span>':'')+'</td></tr>');
  const cards=[['Regular GP',p.regGames],['Regular G',p.regGoals],['Regular A',p.regAssists],['Regular PTS',(p.regGoals||0)+(p.regAssists||0)],['Playoff GP',p.playoffGames],['Playoff G',p.playoffGoals],['Playoff A',p.playoffAssists],['Playoff PTS',(p.playoffGoals||0)+(p.playoffAssists||0)],['Career PTS',totalG+totalA],['Championships',p.titles]].map(([k,v])=>'<div class="stat"><span class="sub tiny">'+k+'</span><div class="big mono">'+fmt(v)+'</div></div>').join('');
- $('app').innerHTML='<div class="buttonrow" style="margin:0 0 16px"><button data-nav="players">← Back to Player History</button></div><div class="panel"><div class="stickybar"><div><h2 style="margin:0">'+esc(p.name)+'</h2><p class="sub">Current/final rating +'+p.bonus+' · '+status+' · '+(p.origin==='draft'?'Drafted':'Generated')+' · Joined Season '+p.joinSeason+'</p></div><div>'+teamLink(p.teamId)+'</div></div></div><div class="career-cards">'+cards+'</div><div class="panel"><h2>Season-by-Season Career</h2><p class="sub tiny" style="margin-bottom:12px">Each season shows the team, rating, regular-season scoring and playoff scoring. A player’s statistics follow them across teams.</p>'+ (rows.length?table(['Season','Team','Rating','GP','G','A','PTS','PO GP','PO G','PO A','PO PTS','Champion'],rows):'<p class="empty">No completed season yet.</p>')+(stats.some(r=>!r.complete)?'<p class="sub tiny">Some older games have no individual scoring records; unavailable totals are shown as a dash.</p>':'')+'</div>';
+ $('app').innerHTML='<div class="buttonrow" style="margin:0 0 16px"><button data-nav="players">← Back to Player History</button></div><div class="panel"><div class="stickybar"><div><h2 style="margin:0">'+esc(p.name)+'</h2><p class="sub">Current/final rating '+ratingHtml(p)+' · '+status+' · '+(p.origin==='draft'?'Drafted':'Generated')+' · Joined Season '+p.joinSeason+'</p></div><div>'+teamLink(p.teamId)+'</div></div></div><div class="career-cards">'+cards+'</div><div class="panel"><h2>Season-by-Season Career</h2><p class="sub tiny" style="margin-bottom:12px">Each season shows the team, rating, regular-season scoring and playoff scoring. A player’s statistics follow them across teams.</p>'+ (rows.length?table(['Season','Team','Rating','GP','G','A','PTS','PO GP','PO G','PO A','PO PTS','Champion'],rows):'<p class="empty">No completed season yet.</p>')+(stats.some(r=>!r.complete)?'<p class="sub tiny">Some older games have no individual scoring records; unavailable totals are shown as a dash.</p>':'')+'</div>';
 }
 function oddsTotal(weights){return weights.reduce((sum,n)=>sum+Number(n||0),0)}
 function oddsStatusHtml(key,weights){

@@ -3,27 +3,23 @@ function roundRobin(ids){let arr=ids.slice(),n=arr.length,rounds=[];for(let r=0;
 function standingsSort(a,b){return b.points-a.points||b.w-a.w||b.diff-a.diff||a.tieBreaker-b.tieBreaker}
 function snapshotRow(team,seasonStats,seed){return {id:team.id,name:team.name,seed,played:seasonStats.games,w:seasonStats.w,l:seasonStats.l,otl:seasonStats.otl,points:seasonStats.points,coinW:seasonStats.coinW,coinL:seasonStats.coinL,gf:seasonStats.gf,ga:seasonStats.ga,diff:seasonStats.diff,bonus:seasonStats.bonus,tieBreaker:seasonStats.tieBreaker}}
 function makeMatch(a,b,bonusA,bonusB){return {aId:a,bId:b,bonusA,bonusB,winsA:0,winsB:0,winnerId:null,gameIds:[]}}
-function firstRound(season){const s=season.settings,rows=season.standings,pairs=[[1,8],[4,5],[2,7],[3,6]];return pairs.map(([a,b])=>makeMatch(rows[a-1].id,rows[b-1].id,s.firstRoundBonuses[a-1],0))}
+function firstRound(season){const rows=season.standings,pairs=[[1,8],[4,5],[2,7],[3,6]];return pairs.map(([a,b])=>makeMatch(rows[a-1].id,rows[b-1].id,0,0))}
 function nextRound(season){
- const round=season.rounds.length,prev=season.rounds[round-1];if(round===1){
-  const pairs=[[prev[0].winnerId,prev[1].winnerId],[prev[2].winnerId,prev[3].winnerId]],seed=id=>season.seedById[id],best=Math.min(...pairs.flat().map(seed));
-  return pairs.map(([a,b])=>{let higher=seed(a)<seed(b)?a:b,adv=(seed(a)===best||seed(b)===best)?season.settings.semifinalBonuses[0]:season.settings.semifinalBonuses[1];return makeMatch(a,b,a===higher?adv:0,b===higher?adv:0)})
- }
- if(round===2){const [a,b]=prev.map(x=>x.winnerId),higher=season.seedById[a]<season.seedById[b]?a:b;return [makeMatch(a,b,a===higher?season.settings.finalBonus:0,b===higher?season.settings.finalBonus:0)]}
+ const round=season.rounds.length,prev=season.rounds[round-1];
+ if(round===1)return [[prev[0].winnerId,prev[1].winnerId],[prev[2].winnerId,prev[3].winnerId]]
+  .map(([a,b])=>makeMatch(a,b,0,0));
+ if(round===2)return [makeMatch(prev[0].winnerId,prev[1].winnerId,0,0)];
  throw Error('Unknown playoff round');
 }
 function beginSeason(){
  if(state.activeSeason)throw Error('Finish the current playoffs before starting another regular season.');
  state.seasonComplete=false;
  const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(),events=[],rosterStart={};
- // Relearn team goal pace each year as roster strength and league balance change.
+ // Reset display-only current-season scoring counters.
  for(const t of state.teams){t.scoringGF=0;t.scoringGP=0;}
  // Brand-new universes begin with 1–3 players per team (15% / 50% / 35%).
  // This runs once at the first Season 1 simulation, not when the empty state
  // is created, so the initial teams/settings are still editable beforehand.
- // Older saved universes have no openingRostersPending flag and retain the
- // original one-player-per-empty-team start. A prefilled season-0 roster also
- // follows the legacy path to avoid adding unexpected players.
  const openingRosters=year===1&&state.openingRostersPending===true&&
    state.teams.every(t=>t.roster.length===0);
  state.openingRostersPending=false;
@@ -40,7 +36,10 @@ function beginSeason(){
  }
  // Last-place team drafts first, then may also spawn if its roster is not full.
  if(state.pendingDraftTeam!==null){let t=state.teams[state.pendingDraftTeam],pick=makeNewPlayer(t.id,'draft',year);if(t.roster.length>=s.maxRoster){let worst=t.roster.reduce((a,b)=>a.bonus<=b.bonus?a:b);t.roster=t.roster.filter(p=>p.id!==worst.id);worst.retireSeason=year-1;changed.set(worst.id,worst);events.push(`${t.name} released ${worst.name} (+${worst.bonus}) for a draft pick`)}t.roster.push(pick);changed.set(pick.id,pick);events.push(`${t.name} drafted ${pick.name} (+${pick.bonus}, Year 1)`)}
- for(const t of state.teams){if(!openingRosters&&t.roster.length<s.maxRoster){let p=makeNewPlayer(t.id,'spawn',year);t.roster.push(p);changed.set(p.id,p);events.push(`${t.name} spawned ${p.name} (+${p.bonus}, Year ${p.year})`)}for(const p of t.roster){if(rollPlayerMotivation(p,year))changed.set(p.id,p);if(ensureScoringTendency(p))changed.set(p.id,p);if('goalTarget' in p||'goalTargetSeason' in p){delete p.goalTarget;delete p.goalTargetSeason;changed.set(p.id,p)}}rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin}))}
+ for(const t of state.teams){if(!openingRosters&&t.roster.length<s.maxRoster){let p=makeNewPlayer(t.id,'spawn',year);t.roster.push(p);changed.set(p.id,p);events.push(`${t.name} spawned ${p.name} (+${p.bonus}, Year ${p.year})`)}for(const p of t.roster){if(rollPlayerMotivation(p,year))changed.set(p.id,p);if(ensureScoringTendency(p))changed.set(p.id,p);if('goalTarget' in p||'goalTargetSeason' in p){delete p.goalTarget;delete p.goalTargetSeason;changed.set(p.id,p)}}rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null}))}
+ // Capture strength and initial player scoring once per season, after generation and Motivation.
+ trackTeamStrength();
+ state.seasonGoalStart=Object.fromEntries(state.teams.flatMap(t=>t.roster.map(p=>[p.id,p.regGoals||0])));
  const before=state.teams.map(t=>({w:t.regW,l:t.regL,otl:t.regOTL||0,points:t.regPoints,coinW:t.regCoinW,coinL:t.regCoinL,gf:t.pointsFor,ga:t.pointsAgainst}));
  const bonus=state.teams.map(bonusOf),rr=roundRobin(state.teams.map(t=>t.id)),legs=s.gamesPerTeam/15;
  for(let leg=0;leg<legs;leg++)for(const round of rr)for(let i=0;i<round.length;i++){
@@ -78,9 +77,20 @@ function finishSeason(){
   if(isChamp){t.titles++;t.currentTitleStreak++;t.bestTitleStreak=Math.max(t.bestTitleStreak,t.currentTitleStreak);t.titleDrought=0;if(!t.firstSeasonTitle)t.firstSeasonTitle=year}
   else{t.currentTitleStreak=0;t.titleDrought++;t.longestTitleDrought=Math.max(t.longestTitleDrought,t.titleDrought)}
   if(t.id===last){t.lastPlaces++;t.currentFirstStreak++;t.bestFirstStreak=Math.max(t.bestFirstStreak,t.currentFirstStreak)}else t.currentFirstStreak=0;
-  for(const p of t.roster){ensurePlayer(p);p.seasons++;if(isChamp)p.titles++;p.history.push({season:year,year:p.year,team:t.id,bonus:p.bonus,champion:isChamp});if(p.year>=s.careerLength){p.retireSeason=year;active.events.push(`${t.name}: ${p.name} retired (+${p.bonus})`)}else p.year++;changed.set(p.id,p)}
+  for(const p of t.roster){ensurePlayer(p);p.seasons++;if(isChamp)p.titles++;p.history.push({season:year,year:p.year,team:t.id,bonus:p.bonus,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null,champion:isChamp});if(p.year>=s.careerLength){p.retireSeason=year;active.events.push(`${t.name}: ${p.name} retired (+${p.bonus})`)}else p.year++;changed.set(p.id,p)}
   t.roster=t.roster.filter(p=>!p.retireSeason);
  }
+ const stats=testingData();
+ for(const p of changed.values()){
+  const goals=(p.regGoals||0)-(state.seasonGoalStart?.[p.id]||0);
+  if(goals>=40)stats.goalSeasons.forty++;
+  if(goals>=50)stats.goalSeasons.fifty++;
+  if(goals>=60)stats.goalSeasons.sixty++;
+  if(goals>=70)stats.goalSeasons.seventy++;
+ }
+ delete state.seasonGoalStart;
+ stats.seasons++;
+ if(stats.seasons===100||stats.seasons===1000)stats.checkpoints[stats.seasons]=testingSnapshot();
  state.season=year;state.activeSeason=null;state.seasonComplete=true;
  return {result:{season:year,settings:clone(s),standings:active.standings,rounds:active.rounds,championId:champion,runnerUpId:runnerUp,lastId:last,rosters:active.rosters,events:active.events,gameCount:active.gameCount,coinCount:active.coinCount},players:[...changed.values()]}
 }
