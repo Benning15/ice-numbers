@@ -27,6 +27,7 @@ assert.equal(evaluate('TAB_NAMES.testing'),'Testing Information');
 assert.equal(evaluate('effectiveRating({bonus:1,motivation:-2})'),0);
 assert.equal(evaluate('effectiveRating({bonus:8,motivation:2})'),10);
 assert.equal(evaluate('bonusOf({roster:[{bonus:8},{bonus:8},{bonus:8}]})'),24);
+evaluate('state=initialState()');
 const rates=parsed('[1,3,5,7,8,9,10].map(bonus=>goalRate({bonus,goalTendency:50}))');
 assert.ok(rates.every((v,i)=>i===0||v>rates[i-1]));
 assert.ok(evaluate('goalRate({bonus:8,goalTendency:75})>goalRate({bonus:8,goalTendency:25})'));
