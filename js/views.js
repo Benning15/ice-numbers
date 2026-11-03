@@ -137,7 +137,7 @@ async function rebuildIndividualSeasonCache(key){
    const teamId=Number(id),team=[];
    for(const p of list){
     const row={id:p.id,name:p.name||'Player '+p.id,season:season.season,teamId,
-     bonus:p.bonus??0,year:p.year??'—',champion:!active||active.season!==season.season?season.championId===teamId:false,
+     bonus:p.bonus??0,ratingTier:p.ratingTier||null,year:p.year??'—',champion:!active||active.season!==season.season?season.championId===teamId:false,
      partial:!!(active&&active.season===season.season),
      regular:{gp:0,g:0,a:0,complete:true},playoff:{gp:0,g:0,a:0,complete:true}};
     byId.set(p.id,row);team.push(row);all.push(row);
