@@ -73,25 +73,6 @@
 
 /* Settings: intuitive scoring strength sliders and exact goal/assist preview. */
 .scoring-strength-control{padding:10px 11px;border:1px solid var(--stroke);border-radius:10px;margin:14px 0;background:rgba(255,255,255,.025)}
-.scoring-strength-control>label{font-weight:700;display:block;margin-bottom:9px}
-.scoring-strength-control input[type="range"]{width:100%;accent-color:var(--accent);cursor:pointer;padding:0;border:0;background:transparent}
-.strength-ends{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted);margin-top:4px}
-.scoring-strength-control .sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0}
-.scoring-strength-control input[type="number"]{width:95px;padding:7px 8px}
-.scoring-preview{border:1px solid #416179;border-radius:12px;margin:20px 0;padding:15px 13px;background:rgba(38,101,132,.09)}
-.scoring-preview h3{margin:0 0 9px}
-.scoring-preview .help{margin-top:8px}
-.scoring-preview-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
-.scoring-preview-controls .control{min-width:0;margin:0}
-.scoring-preview-controls select,.scoring-preview-controls input{width:100%;max-width:100%;box-sizing:border-box}
-.scoring-presets{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:13px}
-.scoring-presets button{font-size:12px;padding:7px 9px;min-height:33px}
-.scoring-preview-results{margin-top:14px}
-#scoring-preview-results>.sub{margin:12px 0}
-.preview-table{font-size:12px;width:100%;min-width:360px}
-.preview-table td,.preview-table th{padding:9px 7px;white-space:nowrap;text-align:right}
-.preview-table td:first-child,.preview-table th:first-child{text-align:left}
-.preview-name{min-width:105px}
-.preview-meter{height:5px;overflow:hidden;border-radius:8px;background:#263d52;margin-top:5px}
-.preview-meter span{display:block;height:100%;background:var(--accent);border-radius:8px}
-@media(max-width:550px){.scoring-preview-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.scoring-preview{padding:12px 9px}}
+/* Rare +8 player seasons: permanent base rating is still +8. */
+.rating-gold{color:#e4b84d;font-weight:900;text-shadow:0 0 8px rgba(220,170,56,.34)}
+.rating-silver{color:#c1cbd8;font-weight:900;text-shadow:0 0 8px rgba(185,202,221,.28)}
