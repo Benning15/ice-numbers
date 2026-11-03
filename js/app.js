@@ -86,5 +86,21 @@ async function boot(){
   state.settings={...clone(DEFAULTS),...(state.settings||{})};
   state.version=3;state.activeSeason??=null;state.seasonComplete??=false;
   if(!saved)await commitState();
-  $('nav').addEventListener('click',handleClick);$('app').addEventListener('click',handleClick);$('app').addEventListener('change',e=>{if(e.target.dataset.logoInput!==undefined){const f=e.target.files?.[0];if(f)changeTeamLogo(Number(e.target.dataset.logoInput),f);e.target.value='';return}if(e.target.id==='season-select'){selectedSeason=Number(e.target.value);render()}if(e.target.id==='team-select'){selectedTeam=Number(e.target.value);render()}if(e.target.id==='player-history-mode'){playerHistoryMode=e.target.value==='season'?'season':'career';playerPage=0;render();return}if(e.target.id==='single-season-sort'){singleSeasonSort=e.target.value;playerPage=0;singleSeasonDescending=!['name','teamId'].includes(singleSeasonSort);render();return}if(e.target.id==='player-sort'){playerSort=e.target.value;playerPage=0;playerSortDescending=!['name','teamId','origin','status'].includes(playerSort);render()}if(e.target.dataset.previewRating!==undefined)if(e.target.id==='cfg-gamesPerTeam')});$('app').addEventListener('input',e=>{if(e.target.dataset.weight!==undefined)updateOddsTotals();if(e.target.id==='cfg-unassistedPct'||e.target.id==='cfg-oneAssistPct')updateAssistStatus();if(e.target.id.startsWith('cfg-')||e.target.id.startsWith('strength-')||e.target.id.startsWith('preview-')||e.target.dataset.previewRating!==undefined)updateOffensiveDepthPreview()});$('app').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('th[data-sort],th[data-player-sort],th[data-single-season-sort]')){e.preventDefault();e.target.click();return}if(e.key==='Enter'&&e.target.id==='player-search'){e.preventDefault();applyPlayerSearch();return}if(e.key==='Enter'&&e.target.dataset.teamName!==undefined){e.preventDefault();changeTeamName(Number(e.target.dataset.teamName))}});$('backup-input').addEventListener('change',e=>{let f=e.target.files[0];if(f)importBackup(f);e.target.value=''});await render()}catch(err){console.error(err);$('app').innerHTML=`<div class="notice warn">Unable to open local browser storage: ${esc(err.message)}. Try Chrome or Edge in a normal window, rather than private mode.</div>`}}
+  $('nav').addEventListener('click',handleClick);$('app').addEventListener('click',handleClick);$('app').addEventListener('change',e=>{
+ if(e.target.dataset.logoInput!==undefined){
+  const file=e.target.files?.[0];
+  if(file)changeTeamLogo(Number(e.target.dataset.logoInput),file);
+  e.target.value='';return;
+ }
+ if(e.target.id==='season-select'){selectedSeason=Number(e.target.value);render()}
+ if(e.target.id==='team-select'){selectedTeam=Number(e.target.value);render()}
+ if(e.target.id==='player-history-mode'){playerHistoryMode=e.target.value==='season'?'season':'career';playerPage=0;render();return}
+ if(e.target.id==='single-season-sort'){singleSeasonSort=e.target.value;playerPage=0;singleSeasonDescending=!['name','teamId'].includes(singleSeasonSort);render();return}
+ if(e.target.id==='player-sort'){playerSort=e.target.value;playerPage=0;playerSortDescending=!['name','teamId','origin','status'].includes(playerSort);render()}
+});
+$('app').addEventListener('input',e=>{
+ if(e.target.dataset.weight!==undefined)updateOddsTotals();
+ if(e.target.id==='cfg-unassistedPct'||e.target.id==='cfg-oneAssistPct')updateAssistStatus();
+});
+$('app').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('th[data-sort],th[data-player-sort],th[data-single-season-sort]')){e.preventDefault();e.target.click();return}if(e.key==='Enter'&&e.target.id==='player-search'){e.preventDefault();applyPlayerSearch();return}if(e.key==='Enter'&&e.target.dataset.teamName!==undefined){e.preventDefault();changeTeamName(Number(e.target.dataset.teamName))}});$('backup-input').addEventListener('change',e=>{let f=e.target.files[0];if(f)importBackup(f);e.target.value=''});await render()}catch(err){console.error(err);$('app').innerHTML=`<div class="notice warn">Unable to open local browser storage: ${esc(err.message)}. Try Chrome or Edge in a normal window, rather than private mode.</div>`}}
 boot();
