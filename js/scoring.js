@@ -67,7 +67,10 @@ function playmakingRate(p,settings=state.settings){
 }
 function unidentifiedRate(team,settings=state.settings){
  const effectiveSum=team.roster.reduce((sum,p)=>sum+effectiveRating(p),0);
- const share=Math.max(.35,1-Number(settings.unnamedIceTimeImpact)*effectiveSum/30);
+ // Both roster occupancy and elite ice-time competition reduce depth's own chances.
+ // The setting 0 still means no reduction, and depth never disappears entirely.
+ const pressure=.4*(team.roster.length/3)+.6*(effectiveSum/30);
+ const share=Math.max(.35,1-Number(settings.unnamedIceTimeImpact)*pressure);
  return Number(settings.unnamedGoalsPerGame)*share;
 }
 function scorerCandidates(team,exclude){
