@@ -32,8 +32,10 @@ function settings(){
  val('oneAssistPct','One-assist independent/OT goals (%)',0,100,1)+assistStatusHtml(s.unassistedPct,s.oneAssistPct)+
  val('secondaryAssistPct','Second assist on playmaking goals (%)',0,100,1,'A playmaking goal always credits its creator with the primary assist; the secondary is optional and never creates a goal.')+
  '<p class="help">Overtime: goals tied after regulation always trigger a fair 50/50 coin flip, then exactly one additional goal and 0–2 assists.</p>'+
+ scoringEstimatorMarkup()+
  '<div class="settings-bottom-save"><button class="primary" data-save-settings '+(locked?'disabled':'')+'>Save All Settings</button></div></div></div>'+
  '<div class="panel"><h2>League data and backups</h2><p class="sub">V1.4 uses a new local database. The old V1.3 records are separate and untouched; a fresh V1.4 universe starts from scratch.</p><div class="buttonrow"><button id="export">Export complete backup (.json)</button><button id="import">Import V1.4 backup</button><button class="danger" id="reset">Start a new universe</button></div><p class="help">Initial random seed: '+state.initialSeed+'. The Testing Information tab lets you monitor all long-term averages.</p></div>';
+ updateScoringEstimator();
 }
 function number(key,label,min,max,disabled=false,step=1){return `<div class="control"><label for="cfg-${key}">${label}</label><input id="cfg-${key}" type="number" min="${min}" max="${max}" step="${step}" value="${state.settings[key]??DEFAULTS[key]}" ${disabled?'disabled':''}></div>`}
 function sel(key,label,opts){return `<div class="control"><label for="cfg-${key}">${label}</label><select id="cfg-${key}" class="select">${opts.map(([v,l])=>`<option value="${v}" ${state.settings[key]===v?'selected':''}>${l}</option>`).join('')}</select></div>`}
@@ -97,10 +99,12 @@ async function boot(){
  if(e.target.id==='player-history-mode'){playerHistoryMode=e.target.value==='season'?'season':'career';playerPage=0;render();return}
  if(e.target.id==='single-season-sort'){singleSeasonSort=e.target.value;playerPage=0;singleSeasonDescending=!['name','teamId'].includes(singleSeasonSort);render();return}
  if(e.target.id==='player-sort'){playerSort=e.target.value;playerPage=0;playerSortDescending=!['name','teamId','origin','status'].includes(playerSort);render()}
+ if(e.target.id.startsWith('preview-effective-'))updateScoringEstimator();
 });
 $('app').addEventListener('input',e=>{
  if(e.target.dataset.weight!==undefined)updateOddsTotals();
  if(e.target.id==='cfg-unassistedPct'||e.target.id==='cfg-oneAssistPct')updateAssistStatus();
+ if(e.target.id.startsWith('cfg-')||e.target.id.startsWith('preview-effective-'))updateScoringEstimator();
 });
 $('app').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('th[data-sort],th[data-player-sort],th[data-single-season-sort]')){e.preventDefault();e.target.click();return}if(e.key==='Enter'&&e.target.id==='player-search'){e.preventDefault();applyPlayerSearch();return}if(e.key==='Enter'&&e.target.dataset.teamName!==undefined){e.preventDefault();changeTeamName(Number(e.target.dataset.teamName))}});$('backup-input').addEventListener('change',e=>{let f=e.target.files[0];if(f)importBackup(f);e.target.value=''});await render()}catch(err){console.error(err);$('app').innerHTML=`<div class="notice warn">Unable to open local browser storage: ${esc(err.message)}. Try Chrome or Edge in a normal window, rather than private mode.</div>`}}
 boot();
