@@ -66,12 +66,15 @@ function playmakingRate(p,settings=state.settings){
  return Number(settings.playmakingRateAt9)*Math.pow(e/9,Number(settings.playmakingCurve))*(100-scoringTendency(p))/50;
 }
 function unidentifiedRate(team,settings=state.settings){
+ const base=Number(settings.unnamedGoalsPerGame);
  const effectiveSum=team.roster.reduce((sum,p)=>sum+effectiveRating(p),0);
- // Both roster occupancy and elite ice-time competition reduce depth's own chances.
- // The setting 0 still means no reduction, and depth never disappears entirely.
+ const namedPotential=team.roster.reduce((sum,p)=>sum+goalRate(p,settings)+playmakingRate(p,settings),0);
+ // Both named-player count and quality compete for the unidentified roster's ice time.
+ // Never displace more depth scoring than a reasonable share of the talent replacing it:
+ // adding a weak named player must not make a team WORSE on average.
  const pressure=.4*(team.roster.length/3)+.6*(effectiveSum/30);
- const share=Math.max(.35,1-Number(settings.unnamedIceTimeImpact)*pressure);
- return Number(settings.unnamedGoalsPerGame)*share;
+ const displacement=Math.min(base*Number(settings.unnamedIceTimeImpact)*pressure,.65*namedPotential);
+ return Math.max(0,base-displacement);
 }
 function scorerCandidates(team,exclude){
  const out=[{id:null,weight:Number(state.settings.unnamedRecipientWeight)}];
