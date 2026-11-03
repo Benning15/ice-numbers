@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const files=['js/core.js','js/storage.js','js/scoring.js','js/simulation.js',
 'js/season-actions.js','js/views.js','js/v13.js','js/customization.js',
-'js/testing-view.js','js/app.js'];
+'js/testing-view.js','js/scoring-estimator.js','js/app.js'];
 const sandbox=vm.createContext({console});
 for(const file of files){
  let source=readFileSync(file,'utf8');
@@ -114,6 +114,7 @@ assert.match(nodes.app.innerHTML,/Reset Testing Information/);
 evaluate('settings()');
 assert.match(nodes.app.innerHTML,/\+9 player: independent goals\/game/);
 assert.match(nodes.app.innerHTML,/Last-place draft/);
+assert.match(nodes.app.innerHTML,/Live Scoring Estimator/);
 assert.doesNotMatch(nodes.app.innerHTML,/Goal talent exponent/);
 assert.match(evaluate('ratingHtml({bonus:8,motivation:2})'),/rating-gold/);
 assert.match(evaluate('ratingHtml({bonus:8,motivation:1})'),/rating-silver/);
