@@ -15,7 +15,7 @@ function updateScoringEstimator(){
  for(const k of ['goalRateAt9','playmakingRateAt9','goalCurve','playmakingCurve','goalVolatility',
   'unnamedGoalsPerGame','unnamedIceTimeImpact','unnamedRecipientWeight','unnamedAssistWeight','recipientCurve']){
   const input=$('cfg-'+k);
-  if(!input||input.value.trim()===''||!Number.isFinite(Number(input.value))){target.textContent='Enter valid settings to see the estimate.';return}
+  if(!input||typeof input.value!=='string'||input.value.trim()===''||!Number.isFinite(Number(input.value))){target.textContent='Enter valid settings to see the estimate.';return}
   s[k]=Number(input.value);
  }
  if(!(s.goalRateAt9>=0&&s.playmakingRateAt9>=0&&s.goalCurve>0&&s.playmakingCurve>0&&
