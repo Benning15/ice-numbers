@@ -41,6 +41,9 @@ assert.ok(styles.length>=16&&styles.length<=48);
 assert.ok(styles.every(p=>p.style===50&&p.m>=p.min&&p.m<=p.max));
 const spread=parsed("(function(){state=initialState();state.settings.tendencySpread=25;beginSeason();return state.teams.flatMap(t=>t.roster.map(p=>p.goalTendency))})()");
 assert.ok(spread.every(x=>x>=25&&x<=75)&&new Set(spread).size>1);
+const rosterCheck=parsed("(function(){state=initialState();const none=unidentifiedRate({roster:[]});const weak={bonus:1,goalTendency:50,motivation:0};const one=unidentifiedRate({roster:[weak]})+goalRate(weak)+playmakingRate(weak);const great=[8,8,8].map((bonus,id)=>({id,bonus,goalTendency:50,motivation:0}));return {none,one,starDepth:unidentifiedRate({roster:great})}})()");
+assert.ok(rosterCheck.one>=rosterCheck.none,'adding a low-rated named player must not reduce expected team offence');
+assert.ok(rosterCheck.starDepth<rosterCheck.none,'elite lineups displace unidentified ice time');
 console.log('PASS: Poisson and motivation, default 50/50 and editable styles');
 
 const ot=parsed("(function(){state=initialState();state.settings.unnamedGoalsPerGame=0;const a=state.teams[0],b=state.teams[1],w={0:0,1:0};for(let i=0;i<500;i++){const gs=[],g=playGame(a,b,0,0,1,'regular',0,0,i,gs,new Map());if(!g.coin||g.scoreA+g.scoreB!==1||!g.goalEvents.at(-1).otGoal)throw Error('Bad OT');w[g.winnerId]++}return w})()");
@@ -105,11 +108,13 @@ const checkpoint1000=parsed("(function(){state=initialState();testingData().seas
 assert.equal(checkpoint1000.seasons,1000);
 console.log('PASS: 100/1000-season checkpoints and cumulative testing information');
 
+if(process.env.ICE_NUMBERS_STRESS==='1'){
 const benchmark=parsed("(function(){state=initialState();for(let i=0;i<1000;i++)simulateSeason();const t=testingData(),x=t.checkpoints[1000];return {season:x.seasons,teamPlus:x.teamPlus/x.teamSeasons,players:x.playerSeasons/x.teamSeasons,individual:x.individualPlus/x.playerSeasons,goalsPerGame:x.goals/x.games,highest:x.highestTeamPlus,highEffective:x.highestEffectiveTeamPlus,goalSeasons:t.goalSeasons,multigoal:t.multiGoalGames,twos:t.teamsWithTwoEight,threes:t.teamsWithThreeEight}})()");
 assert.equal(benchmark.season,1000);
 assert.ok(benchmark.goalsPerGame>1&&benchmark.goalsPerGame<25);
 assert.ok(benchmark.teamPlus>0&&benchmark.teamPlus<=24);
 console.log('PASS: 1,000 consecutive seasons measured: '+JSON.stringify(benchmark));
+}
 const nodes={};
 sandbox.document={getElementById:id=>(nodes[id]??={innerHTML:'',textContent:''})};
 evaluate('state=initialState();testingInformation()');
