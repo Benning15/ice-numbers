@@ -136,7 +136,8 @@ function overtimeGoal(team,stage,changed){
 }
 function testingData(){
  if(!state.testing)state.testing={seasons:0,teamSeasons:0,teamPlus:0,effectiveTeamPlus:0,playerSeasons:0,individualPlus:0,
-  games:0,goals:0,unidentifiedGoals:0,otGames:0,byStrength:{},byRosterCount:{},byEffectiveRating:{},
+  games:0,goals:0,unidentifiedGoals:0,otGames:0,byStrength:{},byRosterCount:{},byEffectiveRating:{},byBaseRating:{},
+  highestTeamPlus:0,highestEffectiveTeamPlus:0,teamsWithTwoEight:0,teamsWithThreeEight:0,
   generation:{spawn:{},draft:{}},multiGoalGames:{four:0,five:0,six:0},goalSeasons:{forty:0,fifty:0,sixty:0,seventy:0},
   checkpoints:{}};
  return state.testing;
@@ -147,6 +148,11 @@ function trackTeamStrength(){
   t.teamSeasons++;t.teamPlus+=bonusOf(team);
   t.effectiveTeamPlus+=team.roster.reduce((sum,p)=>sum+effectiveRating(p),0);
   t.playerSeasons+=team.roster.length;t.individualPlus+=bonusOf(team);
+  t.highestTeamPlus=Math.max(t.highestTeamPlus,bonusOf(team));
+  t.highestEffectiveTeamPlus=Math.max(t.highestEffectiveTeamPlus,team.roster.reduce((sum,p)=>sum+effectiveRating(p),0));
+  const eight=team.roster.filter(p=>p.bonus===8).length;
+  if(eight>=2)t.teamsWithTwoEight++;
+  if(eight>=3)t.teamsWithThreeEight++;
  }
 }
 function recordTestingGame(g,a,b){
@@ -172,7 +178,10 @@ function recordTestingGame(g,a,b){
   for(const p of team.roster){
    const bucket=t.byEffectiveRating[effectiveRating(p)]??={games:0,goals:0,assists:0};
    bucket.games++;bucket.goals+=perPlayer[p.id]||0;
-   bucket.assists+=plays.reduce((sum,event)=>sum+event.assistIds.filter(id=>id===p.id).length,0);
+   const assists=plays.reduce((sum,event)=>sum+event.assistIds.filter(id=>id===p.id).length,0);
+   bucket.assists+=assists;
+   const base=t.byBaseRating[p.bonus]??={games:0,goals:0,assists:0};
+   base.games++;base.goals+=perPlayer[p.id]||0;base.assists+=assists;
   }
  }
 }
@@ -180,7 +189,9 @@ function testingSnapshot(){
  const t=testingData();
  return {seasons:t.seasons,teamSeasons:t.teamSeasons,teamPlus:t.teamPlus,effectiveTeamPlus:t.effectiveTeamPlus,
   playerSeasons:t.playerSeasons,individualPlus:t.individualPlus,games:t.games,goals:t.goals,
-  unidentifiedGoals:t.unidentifiedGoals,otGames:t.otGames};
+  unidentifiedGoals:t.unidentifiedGoals,otGames:t.otGames,
+  highestTeamPlus:t.highestTeamPlus,highestEffectiveTeamPlus:t.highestEffectiveTeamPlus,
+  teamsWithTwoEight:t.teamsWithTwoEight,teamsWithThreeEight:t.teamsWithThreeEight};
 }
 function playGame(a,b,bonusA,bonusB,season,stage,round,seriesNo,gameNo,gs,changed){
  const goalsA=generateTeamGoals(a,stage,changed),goalsB=generateTeamGoals(b,stage,changed);
