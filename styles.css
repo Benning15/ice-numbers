@@ -84,3 +84,32 @@
 .scoring-preview-controls select{width:100%;max-width:100%;box-sizing:border-box}
 #scoring-estimator-output .tablewrap{margin-top:9px}
 @media(max-width:550px){.scoring-preview-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.scoring-preview{padding:12px 9px}}
+
+
+/* V1.5 offseason: silent, skippable-by-bulk lottery and prospect card reveals. */
+.draft-lottery-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}
+.draft-team-card{min-width:0;display:flex;align-items:center;gap:9px;background:#152338;border:1px solid #34485e;border-radius:10px;padding:13px 10px;font-size:13px;transition:border-color .3s,background .3s}
+.draft-team-card .team-mark{flex-shrink:0}
+.draft-team-card.selected{border-color:#69cbbd;background:#1a3b40}
+.draft-winner-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.draft-winner,.draft-summary-card{background:linear-gradient(160deg,#1d3947,#14253a);border:1px solid #487b81;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:19px 12px;min-width:0}
+.draft-winner{opacity:0;animation:draftWinnerReveal .65s cubic-bezier(.15,.7,.1,1) var(--draft-delay,0s) forwards}
+.draft-winner .team-mark.large,.draft-summary-card .team-mark.large{height:54px;width:54px}
+.draft-current-pick{display:flex;align-items:center;gap:12px;margin:13px 0}
+.draft-prospect-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 4px;perspective:800px}
+.draft-prospect-card{min-width:0;min-height:215px;background:linear-gradient(160deg,#1c3445,#111c2f);border:1px solid #45677e;border-radius:12px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;gap:9px;padding:17px 10px;opacity:0;transform:rotateY(85deg);animation:draftCardFlip .6s ease-out var(--draft-delay,0s) forwards;backface-visibility:hidden}
+.draft-prospect-card b{font-size:18px;white-space:normal}
+.draft-prospect-card:hover:not(:disabled){border-color:#7bdacc;background:#234653;transform:translateY(-3px)}
+.draft-prospect-card.draft-taken{opacity:.45!important;border-color:#344253;filter:saturate(.4);cursor:default}
+.draft-scout-rating{font-size:23px;font-weight:850;letter-spacing:.02em;color:var(--accent)}
+.draft-reveal-card{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:250px;gap:11px;border:1px solid #538583;background:linear-gradient(145deg,#1b4144,#12273a);border-radius:15px;margin-top:15px;text-align:center;padding:22px 15px;opacity:0;animation:draftRevealRating .65s cubic-bezier(.15,.7,.15,1) .12s forwards}
+.draft-reveal-card h2{margin:0}
+.draft-true-rating{font-size:clamp(58px,9vw,88px);font-weight:900;color:#93e5d9;line-height:1.15;font-variant-numeric:tabular-nums}
+.draft-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:15px 0 12px}
+.draft-summary-card strong{color:var(--accent);font-size:20px}
+@keyframes draftWinnerReveal{0%{opacity:0;transform:translateY(24px) scale(.88)}70%{opacity:1;transform:translateY(-5px) scale(1.025)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes draftCardFlip{0%{opacity:0;transform:rotateY(85deg) scale(.88)}100%{opacity:1;transform:rotateY(0) scale(1)}}
+@keyframes draftRevealRating{0%{opacity:0;transform:translateY(16px) scale(.87)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:850px){.draft-lottery-grid,.draft-prospect-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.draft-winner-grid,.draft-summary-grid{grid-template-columns:1fr}.draft-winner,.draft-summary-card{padding:14px;gap:8px}.draft-prospect-card{min-height:190px}.draft-prospect-card b{font-size:15px}.draft-scout-rating{font-size:20px}}
+@media(prefers-reduced-motion:reduce){.draft-winner,.draft-prospect-card,.draft-reveal-card{animation:none;opacity:1;transform:none}}
