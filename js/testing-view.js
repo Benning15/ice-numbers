@@ -39,7 +39,7 @@ function testingInformation(){
  table(['Base rating','Player-games','Goals/player/game','Assists/player/game'],baseRatings)+'</div>'+
  header('Named-player goals and assists — effective rating','Effective rating includes Hidden Motivation; values can range 0 to +10.')+
  table(['Effective rating','Player-games','Goals/player/game','Assists/player/game'],ratings)+'</div>'+
- header('Spawn and last-place draft rates','Counts of players generated while testing was active.')+
+ header('Generated and lottery draft ratings','Counts of players entering the league while testing was active. Undrafted prospects are excluded.')+
  table(['Base rating','Generated','Drafted'],generated)+
  '<p class="help">Team-seasons with two +8 players: '+fmt(t.teamsWithTwoEight||0)+' · Three +8 players: '+fmt(t.teamsWithThreeEight||0)+'</p></div>'+
  header('Extreme performances','Season counts use regular-season goals. Game counts include only regular-season games.')+

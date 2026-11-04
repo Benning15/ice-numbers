@@ -18,11 +18,11 @@ function ensureScoringTendency(p){
 }
 function scoringTendency(p){return Number.isInteger(p.goalTendency)?p.goalTendency:50}
 function effectiveRating(p){return Math.max(0,Math.min(10,p.bonus+(Number(p.motivation)||0)))}
-function newPlayer(teamId,origin,season){
+function newPlayer(teamId,origin,season,overrides=null){
  const s=state.settings,[lo,hi]=motivationRange(),span=Number(s.tendencySpread??0);
- const bonus=weighted(origin==='draft'?s.draftWeights:s.normalWeights);
- const p={id:state.nextPlayerId++,teamId,name:FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)],bonus,
-  startingYear:origin==='draft'?1:randint(1,s.careerLength),year:0,origin,joinSeason:season,retireSeason:null,
+ const bonus=overrides?.bonus??weighted(origin==='draft'?s.draftWeights:s.normalWeights);
+ const p={id:state.nextPlayerId++,teamId,name:overrides?.name??(FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)]),bonus,
+  startingYear:overrides?.year??(origin==='draft'?1:randint(1,s.careerLength)),year:0,origin,joinSeason:season,retireSeason:null,
   motivationMin:lo,motivationMax:hi,motivation:0,motivationSeason:null,
   goalTendency:randint(50-span,50+span),
   seasons:0,regGames:0,regWins:0,regLosses:0,regOTL:0,regGoals:0,regAssists:0,
@@ -30,7 +30,7 @@ function newPlayer(teamId,origin,season){
  const t=testingData();const kind=origin==='draft'?'draft':'spawn';t.generation[kind][bonus]=(t.generation[kind][bonus]||0)+1;
  return p;
 }
-function makeNewPlayer(teamId,origin,season){const p=newPlayer(teamId,origin,season);p.year=p.startingYear;return p}
+function makeNewPlayer(teamId,origin,season,overrides=null){const p=newPlayer(teamId,origin,season,overrides);p.year=p.startingYear;return p}
 function bonusOf(team){return team.roster.reduce((sum,p)=>sum+p.bonus,0)}
 function clamp(x,lo,hi){return Math.max(lo,Math.min(hi,x))}
 function ensurePlayer(p){
