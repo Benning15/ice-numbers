@@ -19,7 +19,7 @@ assert.equal(evaluate('DEFAULTS.goalRateAt9'),.85);
 assert.equal(evaluate('DEFAULTS.playmakingRateAt9'),.35);
 assert.equal(evaluate('DEFAULTS.tendencySpread'),0);
 assert.equal(evaluate('DEFAULTS.maxRoster'),3);
-assert.equal(evaluate('DEFAULTS.generatedPlayersPerSeason'),8);
+assert.equal(evaluate('DEFAULTS.generatedPlayersPerSeason'),7);
 assert.equal(evaluate('DEFAULTS.unassistedPct'),6);
 assert.equal(evaluate('DEFAULTS.oneAssistPct'),19);
 assert.equal(evaluate('typeof scoringWeight'),'undefined');
