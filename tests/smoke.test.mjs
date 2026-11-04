@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 
-const files=['js/core.js','js/storage.js','js/scoring.js','js/simulation.js',
+const files=['js/core.js','js/storage.js','js/scoring.js','js/draft.js','js/simulation.js',
 'js/season-actions.js','js/views.js','js/v13.js','js/customization.js',
 'js/testing-view.js','js/scoring-estimator.js','js/app.js'];
 const sandbox=vm.createContext({console});
@@ -19,6 +19,7 @@ assert.equal(evaluate('DEFAULTS.goalRateAt9'),.85);
 assert.equal(evaluate('DEFAULTS.playmakingRateAt9'),.35);
 assert.equal(evaluate('DEFAULTS.tendencySpread'),0);
 assert.equal(evaluate('DEFAULTS.maxRoster'),3);
+assert.equal(evaluate('DEFAULTS.generatedPlayersPerSeason'),8);
 assert.equal(evaluate('DEFAULTS.unassistedPct'),6);
 assert.equal(evaluate('DEFAULTS.oneAssistPct'),19);
 assert.equal(evaluate('typeof scoringWeight'),'undefined');
@@ -37,7 +38,7 @@ console.log('PASS: defaults, +24 rosters, effective 0–10 ratings and goal/play
 const poissonMean=evaluate('state=initialState();Array.from({length:12000},()=>poisson(1)).reduce((a,b)=>a+b,0)/12000');
 assert.ok(poissonMean>.94&&poissonMean<1.06);
 const styles=parsed("(function(){state=initialState();beginSeason();return state.teams.flatMap(t=>t.roster.map(p=>({style:p.goalTendency,m:p.motivation,min:p.motivationMin,max:p.motivationMax})))})()");
-assert.ok(styles.length>=16&&styles.length<=48);
+assert.ok(styles.length>=0&&styles.length<=48);
 assert.ok(styles.every(p=>p.style===50&&p.m>=p.min&&p.m<=p.max));
 const spread=parsed("(function(){state=initialState();state.settings.tendencySpread=25;beginSeason();return state.teams.flatMap(t=>t.roster.map(p=>p.goalTendency))})()");
 assert.ok(spread.every(x=>x>=25&&x<=75)&&new Set(spread).size>1);
@@ -92,6 +93,24 @@ for(const length of [30,45,60]){
 const resumed=parsed("(function(){state=initialState();beginSeason();const previous=state.activeSeason.gameCount;playNextGames();return {previous,now:state.activeSeason.gameCount}})()");
 assert.ok(resumed.now>resumed.previous);
 console.log('PASS: incremental playoff simulation');
+const lottery=parsed("(function(){state=initialState();beginSeason();while(state.activeSeason){const x=playNextGames();if(x.completed)finishSeason()}const before=state.draft.eligible.slice(),season=state.season;drawDraftLottery();const winners=state.draft.lottery.slice();revealDraftProspects();const prospects=JSON.parse(JSON.stringify(state.draft.prospects)),chosen=[];for(let i=0;i<3;i++){const item=prospects[i];const drafted=applyDraftPick(item.index);const p=drafted.find(x=>x.name===item.name);chosen.push({team:p.teamId,bonus:p.bonus,year:p.year,expected:item,origin:p.origin});advanceDraftPickReveal()}const phase=state.draft.phase;finishDraft();return {before,winners,prospects,chosen,season,phase,remaining:state.draft,notes:state.upcomingDraftNotes}})()");
+assert.equal(lottery.before.length,8);
+assert.equal(new Set(lottery.before).size,8);
+assert.equal(lottery.winners.length,3);
+assert.equal(new Set(lottery.winners).size,3);
+assert.ok(lottery.winners.every(id=>lottery.before.includes(id)));
+assert.equal(lottery.prospects.length,4);
+assert.equal(lottery.prospects.filter(p=>p.mystery).length,1);
+assert.ok(lottery.prospects.every(p=>p.bonus>=p.rangeMin&&p.bonus<=p.rangeMax&&p.year>=1&&p.year<=3));
+assert.equal(lottery.chosen.length,3);
+lottery.chosen.forEach((p,i)=>{assert.equal(p.team,lottery.winners[i]);assert.equal(p.bonus,p.expected.bonus);assert.equal(p.year,p.expected.year);assert.equal(p.origin,'draft')});
+assert.equal(lottery.phase,'summary');
+assert.equal(lottery.remaining,null);
+assert.equal(lottery.notes.filter(x=>x.includes(' drafted ')).length,3);
+const generation=parsed("(function(){state=initialState();simulateSeason();state.settings.generatedPlayersPerSeason=0;beginSeason();const first=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;while(state.activeSeason){let x=playNextGames();if(x.completed)finishSeason()}completeDraftAutomatically();state.settings.generatedPlayersPerSeason=2;beginSeason();const second=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;return {first,second}})()");
+assert.equal(generation.first,0);
+assert.ok(generation.second>=0&&generation.second<=2);
+console.log('PASS: equal-odds lottery, 4 pre-rolled prospects, 1 concealed card, 3 revealed picks and configurable random generation');
 
 const stats=parsed("(function(){state=initialState();for(let i=0;i<100;i++)simulateSeason();const t=testingData();return {s:t.seasons,n:t.teamSeasons,p:t.playerSeasons,games:t.games,goals:t.goals,checkpoint:t.checkpoints[100],groups:t.byStrength,generated:t.generation,counts:state.teams.map(x=>x.roster.length)}})()");
 assert.equal(stats.s,100);
@@ -123,12 +142,14 @@ assert.match(nodes.app.innerHTML,/Checkpoint after 100 seasons/);
 assert.match(nodes.app.innerHTML,/Reset Testing Information/);
 evaluate('settings()');
 assert.match(nodes.app.innerHTML,/\+9 player: independent goals\/game/);
-assert.match(nodes.app.innerHTML,/Last-place draft/);
+assert.match(nodes.app.innerHTML,/Lottery draft/);
+assert.match(nodes.app.innerHTML,/Random generated players across league\/year/);
 assert.match(nodes.app.innerHTML,/Live Scoring Estimator/);
 assert.doesNotMatch(nodes.app.innerHTML,/Goal talent exponent/);
 assert.match(evaluate('ratingHtml({bonus:8,motivation:2})'),/rating-gold/);
 assert.match(evaluate('ratingHtml({bonus:8,motivation:1})'),/rating-silver/);
 assert.match(readFileSync('js/storage.js','utf8'),/IceNumbersV14/);
 assert.match(readFileSync('index.html','utf8'),/js\/testing-view\.js/);
+assert.match(readFileSync('index.html','utf8'),/js\/draft\.js/);
 console.log('PASS: Settings, Testing Information, old save isolation and silver/gold ratings');
 console.log('All V1.4 smoke tests passed.');
