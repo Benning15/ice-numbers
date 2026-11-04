@@ -13,11 +13,13 @@ function nextRound(season){
 }
 function beginSeason(){
  if(state.activeSeason)throw Error('Finish the current playoffs before starting another regular season.');
+ if(state.draft)throw Error('Complete the offseason draft before starting a regular season.');
  state.seasonComplete=false;
- const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(),events=[],rosterStart={};
+ const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(),events=(state.upcomingDraftNotes||[]).slice(),rosterStart={};
+ state.upcomingDraftNotes=[];
  // Reset display-only current-season scoring counters.
  for(const t of state.teams){t.scoringGF=0;t.scoringGP=0;}
- // Brand-new universes begin with 1–3 players per team (15% / 50% / 35%).
+ // Opening rosters have a 0–3 player distribution averaging exactly two.
  // This runs once at the first Season 1 simulation, not when the empty state
  // is created, so the initial teams/settings are still editable beforehand.
  const openingRosters=year===1&&state.openingRostersPending===true&&
@@ -25,7 +27,7 @@ function beginSeason(){
  state.openingRostersPending=false;
  if(openingRosters){
   for(const t of state.teams){
-   const target=Math.min(s.maxRoster,weighted([15,50,35]));
+   const target=Math.min(s.maxRoster,weighted([10,15,40,35])-1);
    for(let i=0;i<target;i++){
     const p=makeNewPlayer(t.id,'spawn',year);
     t.roster.push(p);
@@ -34,9 +36,17 @@ function beginSeason(){
    }
   }
  }
- // Last-place team drafts first, then may also spawn if its roster is not full.
- if(state.pendingDraftTeam!==null){let t=state.teams[state.pendingDraftTeam],pick=makeNewPlayer(t.id,'draft',year);if(t.roster.length>=s.maxRoster){let worst=t.roster.reduce((a,b)=>a.bonus<=b.bonus?a:b);t.roster=t.roster.filter(p=>p.id!==worst.id);worst.retireSeason=year-1;changed.set(worst.id,worst);events.push(`${t.name} released ${worst.name} (+${worst.bonus}) for a draft pick`)}t.roster.push(pick);changed.set(pick.id,pick);events.push(`${t.name} drafted ${pick.name} (+${pick.bonus}, Year 1)`)}
- for(const t of state.teams){if(!openingRosters&&t.roster.length<s.maxRoster){let p=makeNewPlayer(t.id,'spawn',year);t.roster.push(p);changed.set(p.id,p);events.push(`${t.name} spawned ${p.name} (+${p.bonus}, Year ${p.year})`)}for(const p of t.roster){if(rollPlayerMotivation(p,year))changed.set(p.id,p);if(ensureScoringTendency(p))changed.set(p.id,p);if('goalTarget' in p||'goalTargetSeason' in p){delete p.goalTarget;delete p.goalTargetSeason;changed.set(p.id,p)}}rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null}))}
+ // Exactly N randomly selected eligible teams receive one generated player.
+ // Draft picks were awarded after the previous championship, independently.
+ if(!openingRosters){
+  const eligible=shuffleDraft(state.teams.filter(t=>t.roster.length<s.maxRoster).map(t=>t.id));
+  for(const id of eligible.slice(0,s.generatedPlayersPerSeason??DEFAULTS.generatedPlayersPerSeason)){
+   const t=state.teams[id],p=makeNewPlayer(id,'spawn',year);
+   t.roster.push(p);changed.set(p.id,p);
+   events.push(`${t.name} generated ${p.name} (+${p.bonus}, Year ${p.year})`);
+  }
+ }
+ for(const t of state.teams){for(const p of t.roster){if(rollPlayerMotivation(p,year))changed.set(p.id,p);if(ensureScoringTendency(p))changed.set(p.id,p);if('goalTarget' in p||'goalTargetSeason' in p){delete p.goalTarget;delete p.goalTargetSeason;changed.set(p.id,p)}}rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null}))}
  // Capture strength and initial player scoring once per season, after generation and Motivation.
  trackTeamStrength();
  state.seasonGoalStart=Object.fromEntries(state.teams.flatMap(t=>t.roster.map(p=>[p.id,p.regGoals||0])));
@@ -50,7 +60,7 @@ function beginSeason(){
  rows.forEach((r,i)=>r.seed=i+1);
  const active={season:year,settings:s,standings:rows,events,rosters:rosterStart,seedById:Object.fromEntries(rows.map(r=>[r.id,r.seed])),lastId:rows.at(-1).id,rounds:[],round:0,phase:'playoffs',gameCount:gs.length,coinCount:gs.filter(g=>g.coin).length};
  active.rounds=[firstRound(active)];state.activeSeason=active;
- state.pendingDraftTeam=active.lastId;
+ state.pendingDraftTeam=null;
  return {games:gs,players:[...changed.values()]};
 }
 function playNextGames(){
@@ -92,9 +102,14 @@ function finishSeason(){
  stats.seasons++;
  if(stats.seasons===100||stats.seasons===1000)stats.checkpoints[stats.seasons]=testingSnapshot();
  state.season=year;state.activeSeason=null;state.seasonComplete=true;
+ state.draft={season:year,phase:'lottery',eligible:active.standings.slice(8).map(r=>r.id),lottery:null,prospects:null,picks:[]};
  return {result:{season:year,settings:clone(s),standings:active.standings,rounds:active.rounds,championId:champion,runnerUpId:runnerUp,lastId:last,rosters:active.rosters,events:active.events,gameCount:active.gameCount,coinCount:active.coinCount},players:[...changed.values()]}
 }
-function simulateSeason(){let all=[],changes=new Map();if(!state.activeSeason){let a=beginSeason();all.push(...a.games);for(let p of a.players)changes.set(p.id,p)}
- while(state.activeSeason){const a=playNextGames();all.push(...a.games);for(let p of a.players)changes.set(p.id,p);if(a.completed){const done=finishSeason();for(let p of done.players)changes.set(p.id,p);return {result:done.result,games:all,players:[...changes.values()]}}}
+function simulateSeason(){let all=[],changes=new Map();
+ if(state.draft)for(const p of completeDraftAutomatically())changes.set(p.id,p);
+ if(!state.activeSeason){let a=beginSeason();all.push(...a.games);for(let p of a.players)changes.set(p.id,p)}
+ while(state.activeSeason){const a=playNextGames();all.push(...a.games);for(let p of a.players)changes.set(p.id,p);if(a.completed){const done=finishSeason();for(let p of done.players)changes.set(p.id,p);
+  for(const p of completeDraftAutomatically())changes.set(p.id,p);
+  return {result:done.result,games:all,players:[...changes.values()]}}}
  throw Error('Season simulation interrupted');
 }
