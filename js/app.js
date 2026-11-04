@@ -88,6 +88,16 @@ async function boot(){
   state=saved?.value||await newUniverseState();
   state.settings={...clone(DEFAULTS),...(state.settings||{})};
   state.version=3;state.activeSeason??=null;state.seasonComplete??=false;state.draft??=null;state.upcomingDraftNotes??=[];
+  // Upgrade a V1.4 pending guaranteed last-place draft to the new lottery.
+  // Existing player histories and saved game scores remain unchanged.
+  if(!state.draft&&!state.activeSeason&&Number.isInteger(state.pendingDraftTeam)&&state.season>0){
+   const previous=await get('seasons',state.season);
+   if(previous?.standings?.length===16){
+    state.draft={season:state.season,phase:'lottery',eligible:previous.standings.slice(8).map(r=>r.id),lottery:null,prospects:null,picks:[]};
+    state.pendingDraftTeam=null;
+    await commitState();
+   }
+  }
   if(!saved)await commitState();
   $('nav').addEventListener('click',handleClick);$('app').addEventListener('click',handleClick);$('app').addEventListener('change',e=>{
  if(e.target.dataset.logoInput!==undefined){
