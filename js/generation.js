@@ -15,13 +15,24 @@ function startGenerationStage(){
 function drawGenerationTeams(){
  const g=state.generation;
  if(!g||g.phase!=='ranking')throw Error('Generation selection is not ready.');
- const eligible=state.teams.filter(t=>t.roster.length<state.settings.maxRoster).map(t=>t.id);
- g.selected=shuffleDraft(eligible).slice(0,g.count);
+ const allTeams=state.teams.map(t=>t.id);
+ g.selected=shuffleDraft(allTeams).slice(0,g.count);
  g.phase='chosen';
 }
 function viewGenerationWinners(){
  if(!state.generation||state.generation.phase!=='chosen')throw Error('Team selection must finish first.');
  state.generation.phase='teams';
+}
+function generatedPlayerBeatsWeakest(p,weakest){
+ // Only permanent + and career year count: a lower career year is younger.
+ return p.bonus>weakest.bonus||(p.bonus===weakest.bonus&&p.year<weakest.year);
+}
+function weakestRosterPlayer(roster){
+ return roster.reduce((a,b)=>b.bonus<a.bonus||(b.bonus===a.bonus&&b.year>a.year)?b:a);
+}
+function markPlayerCut(p,season){
+ p.cutSeason=season;
+ p.retireSeason=season-1;
 }
 function generateOffseasonPlayers(){
  const g=state.generation;
@@ -31,13 +42,31 @@ function generateOffseasonPlayers(){
  state.upcomingDraftNotes??=[];
  for(const teamId of g.selected){
   const t=state.teams[teamId];
-  if(!t||t.roster.length>=state.settings.maxRoster)throw Error('Selected team has no roster space.');
+  if(!t)throw Error('Unknown team selected for generation.');
   const before=bonusOf(t),p=makeNewPlayer(teamId,'spawn',g.year);
-  t.roster.push(p);
+  let cut=null,kept=true;
+  if(t.roster.length<state.settings.maxRoster){
+   t.roster.push(p);
+  }else{
+   const weakest=weakestRosterPlayer(t.roster);
+   if(generatedPlayerBeatsWeakest(p,weakest)){
+    t.roster=t.roster.filter(x=>x.id!==weakest.id);
+    markPlayerCut(weakest,g.year);
+    updated.push(weakest);
+    cut={playerId:weakest.id,name:weakest.name,bonus:weakest.bonus,year:weakest.year,newPlayer:false};
+    t.roster.push(p);
+   }else{
+    kept=false;
+    markPlayerCut(p,g.year);
+    cut={playerId:p.id,name:p.name,bonus:p.bonus,year:p.year,newPlayer:true};
+   }
+  }
+  // Even a rejected generated prospect is saved in Player History as Cut.
   updated.push(p);
   const after=bonusOf(t);
-  g.results.push({teamId,playerId:p.id,name:p.name,bonus:p.bonus,year:p.year,before,after});
-  state.upcomingDraftNotes.push(t.name+' generated '+p.name+' (+'+p.bonus+', Year '+p.year+')');
+  g.results.push({teamId,playerId:p.id,name:p.name,bonus:p.bonus,year:p.year,before,after,kept,cut});
+  state.upcomingDraftNotes.push(t.name+' generated '+p.name+' (+'+p.bonus+', Year '+p.year+')'+(kept?'':' — CUT'));
+  if(cut&&!cut.newPlayer)state.upcomingDraftNotes.push(t.name+' cut '+cut.name+' (+'+cut.bonus+', Year '+cut.year+')');
  }
  g.phase='results';
  return updated;
@@ -61,14 +90,14 @@ function completeGenerationAutomatically(){
 }
 function generationTeamTile(row,selected,showPicked){
  const id=row.teamId,team=state.teams[id];
- const canReceive=row.rosterCount<state.settings.maxRoster;
+ const atCapacity=row.rosterCount>=state.settings.maxRoster;
  const isPicked=selected?.includes(id);
- return '<div class="generation-team '+(showPicked&&isPicked?'generation-picked':!canReceive?'generation-full':'')+
+ return '<div class="generation-team '+(showPicked&&isPicked?'generation-picked':'')+
   '" style="--generation-order:'+(showPicked&&isPicked?selected.indexOf(id):0)+'">'+
   '<span class="generation-team-main">'+teamMark(id)+'<b>'+esc(team.name)+'</b></span>'+
   '<span class="generation-team-total">+'+row.base+'</span>'+
   (showPicked&&isPicked?'<span class="generation-team-status">SELECTED</span>':
-   !canReceive?'<span class="generation-team-status muted">FULL</span>':'')+
+   atCapacity?'<span class="generation-team-status muted">3/3</span>':'')+
   '</div>';
 }
 function generationView(){
@@ -76,7 +105,7 @@ function generationView(){
  if(!g){titlebar('Player Generation','No generation currently pending.');$('app').innerHTML='<div class="panel"><button data-nav="dashboard">Dashboard</button></div>';return}
  const count=(g.selected||[]).length;
  titlebar('Offseason Player Generation','Season '+g.year+' · Random player generation');
- const summary='<div class="panel"><h2>Season '+g.year+' · Player generation</h2><p class="sub tiny">Every team is ranked by its combined permanent base + (0 to +24). Up to '+g.count+' teams with open roster spots receive one new player each. The selection is random, not based on ranking.</p></div>';
+ const summary='<div class="panel"><h2>Season '+g.year+' · Player generation</h2><p class="sub tiny">Every team is ranked by its combined permanent base + (0 to +24). Exactly '+g.count+' of the 16 teams are randomly selected (unless the setting is 0). Full rosters can be selected: a generated player replaces the weakest only if stronger, or if equally rated and younger. Hidden Motivation never counts.</p></div>';
  if(g.phase==='ranking'||g.phase==='chosen'){
   const chosen=g.phase==='chosen';
   const cards=g.ranked.map(row=>generationTeamTile(row,g.selected,chosen)).join('');
@@ -86,12 +115,15 @@ function generationView(){
  }
  const selectedRows=(g.selected||[]).map(id=>g.ranked.find(r=>r.teamId===id));
  if(g.phase==='teams'){
-  $('app').innerHTML=summary+'<div class="panel"><h2>'+count+' Teams Selected</h2><p class="sub tiny">These teams will each receive one randomly generated player. Existing team + shown below.</p><div class="generation-team-grid">'+selectedRows.map(r=>generationTeamTile(r,g.selected,true)).join('')+'</div><div class="buttonrow"><button class="primary" data-generation-action="generate">Generate '+count+' Players</button></div></div>';
+  $('app').innerHTML=summary+'<div class="panel"><h2>'+count+' Teams Selected</h2><p class="sub tiny">Each team generates one player. A full roster keeps its best three, using base + and career year only. Current team + shown below.</p><div class="generation-team-grid">'+selectedRows.map(r=>generationTeamTile(r,g.selected,true)).join('')+'</div><div class="buttonrow"><button class="primary" data-generation-action="generate">Generate '+count+' Players</button></div></div>';
   return;
  }
  if(g.phase==='results'){
-  const rows=(g.results||[]).map((r,i)=>'<div class="generation-result" style="--generation-order:'+i+'"><div class="generation-result-team">'+teamMark(r.teamId)+'<b>'+esc(state.teams[r.teamId].name)+'</b></div><div class="generation-result-player"><b>'+esc(r.name)+'</b><span class="sub tiny">+'+r.bonus+' · Career Year '+r.year+'</span></div><div class="generation-result-plus"><span class="sub tiny">TEAM +</span><strong>+'+r.before+' → +'+r.after+'</strong></div></div>').join('');
-  $('app').innerHTML=summary+'<div class="panel"><h2>Generated Players · Season '+g.year+'</h2><div class="generation-results">'+(rows||'<p class="sub">No eligible teams were selected. No players generated.</p>')+'</div><div class="buttonrow"><button class="primary" data-generation-action="finish">Continue to Season '+g.year+'</button></div></div>';
+  const rows=(g.results||[]).map((r,i)=>{
+   const cut=r.cut?'<div class="generation-cut">CUT: '+esc(r.cut.name)+' (+'+r.cut.bonus+', Year '+r.cut.year+')</div>':'';
+   return '<div class="generation-result" style="--generation-order:'+i+'"><div class="generation-result-team">'+teamMark(r.teamId)+'<b>'+esc(state.teams[r.teamId].name)+'</b></div><div class="generation-result-player"><b>'+esc(r.name)+'</b><span class="sub tiny">+'+r.bonus+' · Career Year '+r.year+'</span>'+cut+'</div><div class="generation-result-plus"><span class="sub tiny">TEAM +</span><strong>+'+r.before+' → +'+r.after+'</strong></div></div>';
+  }).join('');
+  $('app').innerHTML=summary+'<div class="panel"><h2>Generated Players · Season '+g.year+'</h2><div class="generation-results">'+(rows||'<p class="sub">No teams were selected. No players generated.</p>')+'</div><div class="buttonrow"><button class="primary" data-generation-action="finish">Continue to Season '+g.year+'</button></div></div>';
  }
 }
 async function performGenerationAction(action){

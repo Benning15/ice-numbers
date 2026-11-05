@@ -9,9 +9,9 @@ function settings(){
  '<div class="formgrid">'+
  '<div class="panel"><h2>League and player generation</h2>'+
  sel('gamesPerTeam','Games per team',[[30,'30'],[45,'45'],[60,'60']])+
- val('generatedPlayersPerSeason','Random generated players across league/year',0,16,1,'Each season after the opener, up to this many different randomly chosen teams with open roster slots receive one player. Draft picks are separate.')+
+ val('generatedPlayersPerSeason','Random generated players across league/year',0,16,1,'After the draft, this many distinct teams are selected from all 16. Each generates one player; at 3/3, the weakest is cut only if the new player is better (+), or younger with the same +. Hidden Motivation does not matter. Draft picks are separate.')+
  val('careerLength','Maximum career years',1,15,1)+
- '<p class="help">Teams can have up to three named players. Three non-playoff teams win a lottery draft pick each year, while the chosen number of random eligible teams generate one player each.</p>'+
+ '<p class="help">Teams have up to three named players. Three non-playoff teams win lottery draft picks. All 16 teams, including full rosters, are eligible for random generation.</p>'+
  '<h3 class="mutedline">Base rating probabilities</h3><p class="help">Percentages must sum to exactly 100 for each source. +8 remains rare.</p>'+
  ['normalWeights','draftWeights'].map(k=>'<div class="mutedline"><b>'+(k==='normalWeights'?'Normal generation':'Lottery draft')+'</b>'+s[k].map((w,i)=>'<div class="control"><label>+ '+(i+1)+' chance (%)</label><input type="number" step="0.1" min="0" max="100" data-weight="'+k+'" data-index="'+i+'" value="'+w+'"></div>').join('')+oddsStatusHtml(k,s[k])+'</div>').join('')+
  '</div>'+

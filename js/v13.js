@@ -65,7 +65,7 @@ async function playerProfile(){
  const stats=await Promise.all(entries.map(async e=>playerYearStats(p,e,await getIndexAll('games','bySeason',e.season))));
  if(view!=='playerDetail'||selectedPlayer!==id)return;
  const totalG=(p.regGoals||0)+(p.playoffGoals||0),totalA=(p.regAssists||0)+(p.playoffAssists||0);
- const status=p.retireSeason!==null&&p.retireSeason!==undefined?'Retired':'Active';
+ const status=playerStatus(p);
  const statCells=(r,stage)=>{const x=r[stage];return '<td>'+fmt(x.gp)+'</td><td>'+(r.complete?fmt(x.g):'—')+'</td><td>'+(r.complete?fmt(x.a):'—')+'</td><td>'+(r.complete?fmt(x.g+x.a):'—')+'</td>'};
  const rows=stats.map(r=>'<tr><td><button class="linkbtn" data-year="'+r.season+'">'+r.season+'</button></td><td>'+teamLink(r.teamId)+'</td><td>+'+r.rating+'</td>'+statCells(r,'regular')+statCells(r,'playoff')+'<td>'+(r.champion?'🏆':r.partial?'<span class="sub tiny">In progress</span>':'')+'</td></tr>');
  const cards=[['Regular GP',p.regGames],['Regular G',p.regGoals],['Regular A',p.regAssists],['Regular PTS',(p.regGoals||0)+(p.regAssists||0)],['Playoff GP',p.playoffGames],['Playoff G',p.playoffGoals],['Playoff A',p.playoffAssists],['Playoff PTS',(p.playoffGoals||0)+(p.playoffAssists||0)],['Career PTS',totalG+totalA],['Championships',p.titles]].map(([k,v])=>'<div class="stat"><span class="sub tiny">'+k+'</span><div class="big mono">'+fmt(v)+'</div></div>').join('');
