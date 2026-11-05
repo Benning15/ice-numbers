@@ -144,9 +144,34 @@ function testingData(){
  if(!state.testing)state.testing={seasons:0,teamSeasons:0,teamPlus:0,effectiveTeamPlus:0,playerSeasons:0,individualPlus:0,
   games:0,goals:0,unidentifiedGoals:0,otGames:0,byStrength:{},byRosterCount:{},byEffectiveRating:{},byBaseRating:{},
   highestTeamPlus:0,highestEffectiveTeamPlus:0,teamsWithTwoEight:0,teamsWithThreeEight:0,
+  playoffTeamPlus:0,playoffTeamSeasons:0,missedTeamPlus:0,missedTeamSeasons:0,championTeamPlus:0,championTeamSeasons:0,
   generation:{spawn:{},draft:{}},multiGoalGames:{four:0,five:0,six:0},goalSeasons:{forty:0,fifty:0,sixty:0,seventy:0},
   checkpoints:{}};
  return state.testing;
+}
+// Combined PERMANENT base ratings at the end of the regular season.
+// One team-season is counted once, whether or not a team repeats the playoffs.
+const TEAM_OUTCOME_KEYS=['playoffTeamPlus','playoffTeamSeasons','missedTeamPlus','missedTeamSeasons','championTeamPlus','championTeamSeasons'];
+function blankTeamOutcomes(){return Object.fromEntries(TEAM_OUTCOME_KEYS.map(k=>[k,0]))}
+function accumulateTeamOutcomes(t,standings,championId){
+ for(const k of TEAM_OUTCOME_KEYS)t[k]??=0;
+ for(const row of standings||[]){
+  if(!Number.isFinite(row.bonus))continue;
+  if(row.seed<=8){
+   t.playoffTeamPlus+=row.bonus;
+   t.playoffTeamSeasons++;
+  }else{
+   t.missedTeamPlus+=row.bonus;
+   t.missedTeamSeasons++;
+  }
+  if(row.id===championId){
+   t.championTeamPlus+=row.bonus;
+   t.championTeamSeasons++;
+  }
+ }
+}
+function trackTeamOutcomes(standings,championId){
+ accumulateTeamOutcomes(testingData(),standings,championId);
 }
 function trackTeamStrength(){
  const t=testingData();
@@ -197,7 +222,10 @@ function testingSnapshot(){
   playerSeasons:t.playerSeasons,individualPlus:t.individualPlus,games:t.games,goals:t.goals,
   unidentifiedGoals:t.unidentifiedGoals,otGames:t.otGames,
   highestTeamPlus:t.highestTeamPlus,highestEffectiveTeamPlus:t.highestEffectiveTeamPlus,
-  teamsWithTwoEight:t.teamsWithTwoEight,teamsWithThreeEight:t.teamsWithThreeEight};
+  teamsWithTwoEight:t.teamsWithTwoEight,teamsWithThreeEight:t.teamsWithThreeEight,
+  playoffTeamPlus:t.playoffTeamPlus??0,playoffTeamSeasons:t.playoffTeamSeasons??0,
+  missedTeamPlus:t.missedTeamPlus??0,missedTeamSeasons:t.missedTeamSeasons??0,
+  championTeamPlus:t.championTeamPlus??0,championTeamSeasons:t.championTeamSeasons??0};
 }
 function playGame(a,b,bonusA,bonusB,season,stage,round,seriesNo,gameNo,gs,changed){
  const goalsA=generateTeamGoals(a,stage,changed),goalsB=generateTeamGoals(b,stage,changed);
