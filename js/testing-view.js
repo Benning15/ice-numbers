@@ -1,5 +1,24 @@
 'use strict';
 // Cumulative V1.4 simulation diagnostics; distinct from league history.
+// One-time migration for existing V1.5 leagues: recover these three
+// averages from archived season standings without touching game histories.
+// Only the seasons counted since the latest Testing Information reset are
+// included; resets continue to start clean.
+async function hydrateTestingOutcomeHistory(){
+ const t=state.testing;
+ if(!t||Number.isFinite(t.playoffTeamSeasons))return;
+ const seasons=(await getAll('seasons')).sort((a,b)=>a.season-b.season);
+ const records=seasons.slice(-Math.max(0,t.seasons||0));
+ Object.assign(t,blankTeamOutcomes());
+ for(const season of records)accumulateTeamOutcomes(t,season.standings,season.championId);
+ for(const checkpoint of [100,1000]){
+  if(!t.checkpoints?.[checkpoint]||records.length<checkpoint)continue;
+  const totals=blankTeamOutcomes();
+  for(const season of records.slice(0,checkpoint))accumulateTeamOutcomes(totals,season.standings,season.championId);
+  Object.assign(t.checkpoints[checkpoint],totals);
+ }
+ await commitState();
+}
 function testingInformation(){
  titlebar('Testing Information','Tune settings, run seasons, and measure what the simulator actually produces.');
  const t=testingData(),format=(x,d=2)=>Number.isFinite(x)?x.toFixed(d):'—';
@@ -7,6 +26,9 @@ function testingInformation(){
  const cards=(x)=>[
   ['Completed test seasons',fmt(x.seasons)],
   ['Average team +',format(safe(x.teamPlus,x.teamSeasons))],
+  ['Playoff teams — average +',format(safe(x.playoffTeamPlus,x.playoffTeamSeasons))],
+  ['Non-playoff teams — average +',format(safe(x.missedTeamPlus,x.missedTeamSeasons))],
+  ['Champions — average +',format(safe(x.championTeamPlus,x.championTeamSeasons))],
   ['Average effective team +',format(safe(x.effectiveTeamPlus,x.teamSeasons))],
   ['Average named players/team',format(safe(x.playerSeasons,x.teamSeasons))],
   ['Average individual base +',format(safe(x.individualPlus,x.playerSeasons))],
@@ -26,7 +48,7 @@ function testingInformation(){
  const threshold=Object.entries(t.goalSeasons).map(([name,n])=>'<tr><td>'+name[0].toUpperCase()+name.slice(1)+' or more goals</td><td>'+fmt(n)+'</td></tr>');
  const multi=Object.entries(t.multiGoalGames).map(([name,n])=>'<tr><td>'+name[0].toUpperCase()+name.slice(1)+' or more goals in one game</td><td>'+fmt(n)+'</td></tr>');
  $('app').innerHTML=
- '<div class="notice">These are measured results, not forced targets. A fresh universe starts its own testing data. Changing settings does not retroactively change recorded games or test results. Use Reset Testing Information when comparing new settings.</div>'+
+ '<div class="notice">These are measured results, not forced targets. Team + means the combined permanent base ratings (0 to +24), not motivation-adjusted strength. Playoff and non-playoff averages include eight teams per completed season; championship averages include one champion per season. Changing settings does not retroactively change recorded games or test results. Use Reset Testing Information when comparing new settings.</div>'+
  '<div class="buttonrow"><button id="reset-testing" class="danger">Reset Testing Information (keep league history)</button></div>'+
  section(t,'All measured seasons')+
  (t.checkpoints[100]?section(t.checkpoints[100],'Checkpoint after 100 seasons'):'<div class="panel"><h3>Checkpoint after 100 seasons</h3><p class="sub">Available after 100 completed test seasons.</p></div>')+
