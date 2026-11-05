@@ -91,6 +91,7 @@ function finishSeason(){
   t.roster=t.roster.filter(p=>!p.retireSeason);
  }
  const stats=testingData();
+ trackTeamOutcomes(active.standings,champion);
  for(const p of changed.values()){
   const goals=(p.regGoals||0)-(state.seasonGoalStart?.[p.id]||0);
   if(goals>=40)stats.goalSeasons.forty++;
