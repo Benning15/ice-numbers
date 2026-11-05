@@ -65,6 +65,7 @@ function finishDraft(){
  state.pendingDraftTeam=null; // obsolete V1.4 field; never generate a fourth automatic pick.
  state.draft=null;
  state.seasonComplete=false;
+ startGenerationStage();
 }
 function autoDraftChoice(d){
  const team=state.teams[d.lottery[d.picks.length]];
@@ -121,7 +122,7 @@ function draftView(){
   return;
  }
  if(d.phase==='summary'){
-  $('app').innerHTML=head+'<div class="panel"><h2>Draft results</h2><div class="draft-summary-grid">'+d.picks.map(p=>'<div class="draft-summary-card"><span class="pill">Pick '+p.pick+'</span>'+teamMark(p.teamId,true)+'<b>'+esc(state.teams[p.teamId].name)+'</b><span>'+esc(p.name)+'</span><strong>+'+p.bonus+' · Year '+p.year+'</strong></div>').join('')+'</div><p class="sub tiny">The undrafted fourth prospect leaves the board.</p><div class="buttonrow"><button class="primary" data-draft-action="finish">Continue to Next Season</button></div></div>';
+  $('app').innerHTML=head+'<div class="panel"><h2>Draft results</h2><div class="draft-summary-grid">'+d.picks.map(p=>'<div class="draft-summary-card"><span class="pill">Pick '+p.pick+'</span>'+teamMark(p.teamId,true)+'<b>'+esc(state.teams[p.teamId].name)+'</b><span>'+esc(p.name)+'</span><strong>+'+p.bonus+' · Year '+p.year+'</strong></div>').join('')+'</div><p class="sub tiny">The undrafted fourth prospect leaves the board.</p><div class="buttonrow"><button class="primary" data-draft-action="finish">Continue to Player Generation</button></div></div>';
   return;
  }
  const used=new Set(d.picks.map(p=>p.prospectIndex));
@@ -143,7 +144,7 @@ async function performDraftAction(action,index){
   else throw Error('Unknown draft action.');
   if(players.length)await commitProgress([],players);
   else await commitState();
-  view=state.draft?'draft':'dashboard';
+  view=state.draft?'draft':state.generation?'generation':'dashboard';
   notice='';
  }catch(err){state=previous;setBanner('Draft could not be saved: '+err.message,true)}
  finally{busy=false;await render()}
