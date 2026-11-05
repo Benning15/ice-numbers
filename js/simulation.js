@@ -97,7 +97,8 @@ function finishSeason(){
  stats.seasons++;
  if(stats.seasons===100||stats.seasons===1000)stats.checkpoints[stats.seasons]=testingSnapshot();
  state.season=year;state.activeSeason=null;state.seasonComplete=true;
- state.draft={season:year,phase:'lottery',eligible:active.standings.slice(8).map(r=>r.id),lottery:null,prospects:null,picks:[]};
+ state.draft={season:year,phase:'lottery',eligible:active.standings.slice(8).map(r=>r.id),lottery:null,lotteryRevealed:0,
+  originalTeamPlus:Object.fromEntries(active.standings.slice(8).map(r=>[r.id,bonusOf(state.teams[r.id])])),prospects:null,picks:[]};
  return {result:{season:year,settings:clone(s),standings:active.standings,rounds:active.rounds,championId:champion,runnerUpId:runnerUp,lastId:last,rosters:active.rosters,events:active.events,gameCount:active.gameCount,coinCount:active.coinCount},players:[...changed.values()]}
 }
 function simulateSeason(){let all=[],changes=new Map();
