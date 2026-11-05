@@ -6,12 +6,22 @@ function shuffleDraft(items){
  for(let i=out.length-1;i>0;i--){const j=randint(0,i);[out[i],out[j]]=[out[j],out[i]]}
  return out;
 }
-function drawDraftLottery(){
+// The three winning teams are drawn once. Each click reveals a stored winner;
+// "Sim All" reveals the very same selection without drawing again.
+function revealDraftLotteryPick(all=false){
  const d=state.draft;
- if(!d||d.lottery||d.eligible.length!==8)throw Error('Draft lottery is not ready.');
- d.lottery=shuffleDraft(d.eligible).slice(0,3);
+ if(!d||!['lottery','lottery-results'].includes(d.phase)||d.eligible.length!==8)throw Error('Draft lottery is not ready.');
+ if(!d.lottery){
+  d.lottery=shuffleDraft(d.eligible).slice(0,3);
+  d.lotteryRevealed=0;
+  d.originalTeamPlus??=Object.fromEntries(d.eligible.map(id=>[id,bonusOf(state.teams[id])]));
+ }
+ const shown=d.lotteryRevealed??(d.phase==='lottery-results'?d.lottery.length:0);
+ if(!all&&shown>=d.lottery.length)throw Error('All lottery picks have already been revealed.');
+ d.lotteryRevealed=all?d.lottery.length:shown+1;
  d.phase='lottery-results';
 }
+function drawDraftLottery(){revealDraftLotteryPick(true)}
 function prospectRange(actual){
  // Width is determined independently of the actual rating; the generated
  // interval always contains the pre-rolled player rating.
@@ -21,7 +31,7 @@ function prospectRange(actual){
 }
 function revealDraftProspects(){
  const d=state.draft;
- if(!d||!d.lottery||d.prospects)throw Error('Prospects cannot be revealed yet.');
+ if(!d||!d.lottery||d.prospects||(d.lotteryRevealed??d.lottery.length)!==d.lottery.length)throw Error('Reveal all three lottery picks before showing prospects.');
  const mystery=randint(0,3);
  d.prospects=Array.from({length:4},(_,i)=>{
   const bonus=weighted(state.settings.draftWeights),year=randint(1,Math.min(3,state.settings.careerLength));
@@ -36,7 +46,7 @@ function applyDraftPick(index){
  if(!d||d.phase!=='picking'||!d.lottery||!d.prospects||d.picks.length>=3)throw Error('Draft pick is not available.');
  const prospect=d.prospects.find(p=>p.index===index);
  if(!prospect||d.picks.some(p=>p.prospectIndex===index))throw Error('That prospect is no longer available.');
- const teamId=d.lottery[d.picks.length],team=state.teams[teamId],changed=new Map();
+ const teamId=d.lottery[d.picks.length],team=state.teams[teamId],changed=new Map(),before=bonusOf(team);
  const p=makeNewPlayer(teamId,'draft',state.season+1,{bonus:prospect.bonus,name:prospect.name,year:prospect.year});
  let released=null;
  if(team.roster.length>=state.settings.maxRoster){
@@ -49,7 +59,7 @@ function applyDraftPick(index){
  team.roster.push(p);
  changed.set(p.id,p);
  d.picks.push({pick:d.picks.length+1,teamId,prospectIndex:index,playerId:p.id,
-  name:p.name,bonus:p.bonus,year:p.year,releasedId:released?.id??null});
+  name:p.name,bonus:p.bonus,year:p.year,before,after:bonusOf(team),releasedId:released?.id??null});
  state.upcomingDraftNotes??=[];
  if(released)state.upcomingDraftNotes.push(team.name+' released '+released.name+' (+'+released.bonus+') to make room for a draft pick');
  state.upcomingDraftNotes.push(team.name+' drafted '+p.name+' (+'+p.bonus+', Year '+p.year+')');
@@ -90,7 +100,7 @@ function autoDraftChoice(d){
 function completeDraftAutomatically(){
  if(!state.draft)return [];
  const d=state.draft,changed=new Map();
- if(!d.lottery)drawDraftLottery();
+ if(!d.lottery||((d.lotteryRevealed??d.lottery.length)<d.lottery.length))drawDraftLottery();
  if(!d.prospects)revealDraftProspects();
  while(d.picks.length<3){
   if(d.phase==='pick-reveal')advanceDraftPickReveal();
@@ -102,34 +112,44 @@ function completeDraftAutomatically(){
  return [...changed.values()];
 }
 // Pure HTML UI; animation has no effect on RNG or hidden scouting values.
+function draftTeamCard(id,d,shownWinners){
+ const original=d.originalTeamPlus?.[id]??bonusOf(state.teams[id]);
+ const index=shownWinners.indexOf(id);
+ return '<div class="draft-team-card '+(index>=0?'selected':'')+'">'+
+  teamMark(id)+'<span class="draft-team-name">'+esc(state.teams[id].name)+'</span>'+
+  '<strong class="draft-team-plus">+'+original+'</strong>'+
+  (index>=0?'<span class="draft-pick-tag">Pick '+(index+1)+'</span>':'')+'</div>';
+}
 function draftView(){
  const d=state.draft;
  if(!d){titlebar('Draft Lottery','No draft currently pending.');$('app').innerHTML='<div class="panel"><p class="empty">Finish a championship to begin the next lottery.</p><button data-nav="dashboard">Dashboard</button></div>';return}
  titlebar('Offseason Draft','Season '+d.season+' — three lottery teams, four prospects, three picks.');
- const head='<div class="panel"><h2>Season '+d.season+' Draft</h2><p class="sub tiny">Eight non-playoff teams have equal lottery odds. Three different teams receive one selection each.</p></div>';
- if(d.phase==='lottery'){
-  $('app').innerHTML=head+'<div class="panel"><h2>Draft lottery</h2><div class="draft-lottery-grid">'+d.eligible.map(id=>'<div class="draft-team-card">'+teamMark(id)+'<span>'+esc(state.teams[id].name)+'</span></div>').join('')+'</div><div class="buttonrow"><button class="primary" data-draft-action="lottery">Start Lottery</button></div></div>';
+ const head='<div class="panel"><h2>Season '+d.season+' Draft</h2><p class="sub tiny">Eight non-playoff teams have equal lottery odds. The combined + shown is each team’s base rating before the draft.</p></div>';
+ const revealed=d.lottery?d.lottery.slice(0,d.lotteryRevealed??d.lottery.length):[];
+ if(d.phase==='lottery'||d.phase==='lottery-results'){
+  const allShown=d.lottery&&revealed.length===d.lottery.length;
+  const cards=d.eligible.slice().sort((a,b)=>(d.originalTeamPlus?.[b]??bonusOf(state.teams[b]))-(d.originalTeamPlus?.[a]??bonusOf(state.teams[a]))||a-b).map(id=>draftTeamCard(id,d,revealed)).join('');
+  const winners=revealed.length?'<div class="panel"><h2>Lottery picks · '+revealed.length+' of 3</h2><div class="draft-winner-grid">'+revealed.map((id,i)=>'<div class="draft-winner draft-winner-visible" style="--draft-delay:'+(i*.1)+'s"><span class="pill">Pick '+(i+1)+'</span>'+teamMark(id,true)+'<b>'+esc(state.teams[id].name)+'</b><strong>Team +'+(d.originalTeamPlus?.[id]??bonusOf(state.teams[id]))+'</strong></div>').join('')+'</div></div>':'';
+  const buttons=allShown?'<button class="primary" data-draft-action="prospects">Reveal Four Prospects</button>':
+   '<button class="primary" data-draft-action="lottery-pick">Lottery Pick'+(revealed.length?' '+(revealed.length+1)+'/3':' 1/3')+'</button>'+
+   '<button data-draft-action="lottery-all">Sim All</button>';
+  $('app').innerHTML=head+'<div class="panel"><div class="stickybar"><h2>Eight lottery teams · Highest + first</h2><span class="pill">'+revealed.length+' / 3 picks revealed</span></div><div class="draft-lottery-grid">'+cards+'</div><div class="buttonrow">'+buttons+'</div></div>'+winners;
   return;
  }
- const winnerStrip='<div class="panel"><h2>Lottery results</h2><div class="draft-winner-grid">'+d.lottery.map((id,i)=>'<div class="draft-winner" style="--draft-delay:'+(i*.65)+'s"><span class="pill">Pick '+(i+1)+'</span>'+teamMark(id,true)+'<b>'+esc(state.teams[id].name)+'</b></div>').join('')+'</div></div>';
- if(d.phase==='lottery-results'){
-  $('app').innerHTML=head+'<div class="panel"><h2>Eight eligible teams</h2><div class="draft-lottery-grid">'+d.eligible.map(id=>'<div class="draft-team-card '+(d.lottery.includes(id)?'selected':'')+'">'+teamMark(id)+'<span>'+esc(state.teams[id].name)+'</span></div>').join('')+'</div></div>'+winnerStrip+'<div class="buttonrow"><button class="primary" data-draft-action="prospects">Reveal Four Prospects</button></div>';
-  return;
- }
- const results=d.picks.length?'<div class="panel"><h3>Selections so far</h3>'+d.picks.map(p=>'<p class="record">Pick '+p.pick+' · '+esc(state.teams[p.teamId].name)+' · '+esc(p.name)+' · <b>+'+p.bonus+' · Year '+p.year+'</b></p>').join('')+'</div>':'';
+ const results=d.picks.length?'<div class="panel"><h3>Selections so far</h3>'+d.picks.map(p=>'<p class="record">Pick '+p.pick+' · '+esc(state.teams[p.teamId].name)+' · '+esc(p.name)+' · +'+p.bonus+' (Year '+p.year+') · <b>Team +'+(p.before??'?')+' → +'+(p.after??bonusOf(state.teams[p.teamId]))+'</b></p>').join('')+'</div>':'';
  if(d.phase==='pick-reveal'){
   const picked=d.picks.at(-1);
-  $('app').innerHTML=head+'<div class="panel"><h2>Pick '+picked.pick+' — '+esc(state.teams[picked.teamId].name)+'</h2><div class="draft-reveal-card"><span class="sub tiny">SELECTED PROSPECT</span><h2>'+esc(picked.name)+'</h2><div class="draft-true-rating">+'+picked.bonus+'</div><p>Career Year '+picked.year+'</p></div><div class="buttonrow"><button class="primary" data-draft-action="next">'+(d.picks.length===3?'View Draft Summary':'Continue to Pick '+(d.picks.length+1))+'</button></div></div>'+results;
+  $('app').innerHTML=head+'<div class="panel"><h2>Pick '+picked.pick+' — '+esc(state.teams[picked.teamId].name)+'</h2><div class="draft-reveal-card"><span class="sub tiny">SELECTED PROSPECT</span><h2>'+esc(picked.name)+'</h2><div class="draft-true-rating">+'+picked.bonus+'</div><p>Career Year '+picked.year+'</p><div class="draft-team-delta">Team +'+(picked.before??'?')+' → +'+(picked.after??bonusOf(state.teams[picked.teamId]))+'</div></div><div class="buttonrow"><button class="primary" data-draft-action="next">'+(d.picks.length===3?'View Draft Summary':'Continue to Pick '+(d.picks.length+1))+'</button></div></div>'+results;
   return;
  }
  if(d.phase==='summary'){
-  $('app').innerHTML=head+'<div class="panel"><h2>Draft results</h2><div class="draft-summary-grid">'+d.picks.map(p=>'<div class="draft-summary-card"><span class="pill">Pick '+p.pick+'</span>'+teamMark(p.teamId,true)+'<b>'+esc(state.teams[p.teamId].name)+'</b><span>'+esc(p.name)+'</span><strong>+'+p.bonus+' · Year '+p.year+'</strong></div>').join('')+'</div><p class="sub tiny">The undrafted fourth prospect leaves the board.</p><div class="buttonrow"><button class="primary" data-draft-action="finish">Continue to Player Generation</button></div></div>';
+  $('app').innerHTML=head+'<div class="panel"><h2>Draft results</h2><div class="draft-summary-grid">'+d.picks.map(p=>'<div class="draft-summary-card"><span class="pill">Pick '+p.pick+'</span>'+teamMark(p.teamId,true)+'<b>'+esc(state.teams[p.teamId].name)+'</b><span>'+esc(p.name)+'</span><strong>+'+p.bonus+' · Year '+p.year+'</strong><span class="draft-team-delta">Team +'+(p.before??'?')+' → +'+(p.after??bonusOf(state.teams[p.teamId]))+'</span></div>').join('')+'</div><p class="sub tiny">The undrafted fourth prospect leaves the board.</p><div class="buttonrow"><button class="primary" data-draft-action="finish">Continue to Player Generation</button></div></div>';
   return;
  }
  const used=new Set(d.picks.map(p=>p.prospectIndex));
  const turn=d.lottery[d.picks.length];
  const cards=d.prospects.map((p,i)=>'<button class="draft-prospect-card '+(used.has(i)?'draft-taken':'')+'" style="--draft-delay:'+(i*.16)+'s" data-draft-pick="'+i+'" '+(used.has(i)?'disabled':'')+'><span class="sub tiny">PROSPECT '+(i+1)+'</span><b>'+esc(p.name)+'</b><span class="draft-scout-rating">'+(p.mystery?'UNKNOWN':'+'+p.rangeMin+' to +'+p.rangeMax)+'</span><span class="sub">'+(p.mystery?'Career year unknown':'Career Year '+p.year)+'</span>'+(used.has(i)?'<span class="pill">Drafted</span>':'')+'</button>').join('');
- $('app').innerHTML=head+'<div class="panel"><h2>Draft board</h2><div class="draft-current-pick"><span class="pill">Pick '+(d.picks.length+1)+' of 3</span>'+teamMark(turn)+'<b>'+esc(state.teams[turn].name)+'</b></div><p class="sub tiny">Select a prospect. The real rating and career year are already determined and will be revealed after the pick.</p><div class="draft-prospect-grid">'+cards+'</div></div>'+results;
+ $('app').innerHTML=head+'<div class="panel"><h2>Draft board</h2><div class="draft-current-pick"><span class="pill">Pick '+(d.picks.length+1)+' of 3</span>'+teamMark(turn)+'<b>'+esc(state.teams[turn].name)+'</b><strong class="draft-team-delta">Team +'+bonusOf(state.teams[turn])+'</strong></div><p class="sub tiny">Select a prospect. The real rating and career year are already determined and will be revealed after the pick.</p><div class="draft-prospect-grid">'+cards+'</div></div>'+results;
 }
 async function performDraftAction(action,index){
  if(busy||!state.draft)return;
@@ -137,7 +157,8 @@ async function performDraftAction(action,index){
  const previous=clone(state);
  try{
   let players=[];
-  if(action==='lottery')drawDraftLottery();
+  if(action==='lottery'||action==='lottery-all')drawDraftLottery();
+  else if(action==='lottery-pick')revealDraftLotteryPick();
   else if(action==='prospects')revealDraftProspects();
   else if(action==='pick')players=applyDraftPick(index);
   else if(action==='next')advanceDraftPickReveal();
