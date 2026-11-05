@@ -139,3 +139,15 @@
 @media(max-width:600px){.generation-team-grid{grid-template-columns:1fr}.generation-result{grid-template-columns:1fr;gap:9px}.generation-result-plus{grid-column:auto}.generation-team-main b{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.generation-team.generation-picked,.generation-result{animation:none}}
 .generation-cut{font-size:12px;font-weight:800;color:#f4a5a9;margin-top:5px}
+
+
+/* V1.7 — Ranked draft-lottery teams and saved single-pick reveals. */
+.draft-team-card{flex-wrap:wrap;min-height:65px}
+.draft-team-name{flex:1 1 78px;min-width:0;overflow-wrap:anywhere}
+.draft-team-plus{font-size:19px;color:#d5e9f4;font-variant-numeric:tabular-nums;white-space:nowrap}
+.draft-pick-tag{font-size:10px;font-weight:850;color:#9cf0df;border:1px solid #4eaf9c;border-radius:16px;padding:3px 7px;white-space:nowrap}
+.draft-winner strong{font-size:19px;color:#94e7d9}
+.draft-team-delta{display:block;font-size:19px;font-weight:850;color:#95e8da;font-variant-numeric:tabular-nums}
+.draft-current-pick .draft-team-delta{margin-left:auto;font-size:17px}
+.draft-reveal-card .draft-team-delta{margin-top:8px;padding-top:10px;border-top:1px solid #42696a}
+@media(max-width:650px){.draft-team-card{padding:10px 9px}.draft-team-plus{font-size:17px}.draft-current-pick{flex-wrap:wrap}.draft-current-pick .draft-team-delta{width:100%;margin-left:0}}
