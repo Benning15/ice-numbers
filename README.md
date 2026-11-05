@@ -1,4 +1,4 @@
-# Ice Numbers — V1.5 (offseason lottery draft)
+# Ice Numbers — V1.6 (offseason player generation)
 
 A browser-based, 16-team hockey league simulator focused on unpredictable results, rare superstars, long-term league history, dynasties and droughts.
 
@@ -21,9 +21,9 @@ A browser-based, 16-team hockey league simulator focused on unpredictable result
 - The draft presents **four predetermined prospects**; their actual +1 to +8 ratings use your configurable draft odds. Three show a scouting range that includes the true rating and a known career year (1–3); the fourth hides both. After each pick, the true rating and career year appear on a silent, animated reveal.
 - Drafted players join the selecting team for the following season. A full roster replaces its weakest player, so selecting a poor prospect is genuinely risky.
 - Large (1/10/100/1,000-season) automatic runs skip animations and use an AI that evaluates only the visible scouting information, not secret ratings.
-- **Random generated players across league/year** is editable from **0–16**, default **7**. It selects that many eligible teams at random, with at most one normally generated player per team and no generation for full teams. Drafted players are separate. In a 250-season balance check, 7 generations plus 3 draft picks produced about **2.05 named players/team** at season start.
+- **Random generated players across league/year** is editable from **0–16**, default **7**. Following the three-pick draft, the player-generation ceremony ranks all 16 teams by combined base +, randomly selects up to 7 teams with available roster slots and highlights them, shows the selected teams on a separate screen, and then reveals each generated player's name, + rating, career year and updated team +. A full roster cannot be selected; each eligible team can be picked only once. In a 250-season balance check, 7 generations plus 3 draft picks produced about **2.05 named players/team** at season start.
 - Starting teams are sampled from 0/1/2/3 players with 10%/15%/40%/35% chances. A zero-player team is allowed and is supported by unidentified-roster scoring.
-- Draft stages and selected players are saved between page loads; existing V1.4 games and player histories stay in the same IndexedDB database. A pre-existing pending last-place pick becomes a lottery when loaded.
+- Draft and generation stages and newly created players are saved between page loads; existing V1.4/V1.5 games and player histories stay in the same IndexedDB database. A pre-existing pending last-place pick becomes a lottery when loaded. Older mid-offseason saves begin the new generation stage.
 
 ## Settings and Testing Information
 
@@ -40,6 +40,7 @@ An ordinary new league uses the V1.4 database (`IceNumbersV14`), separate from p
 - `js/storage.js` — local browser IndexedDB persistence
 - `js/scoring.js` — player ratings, motivation, independent goals, assists, overtime and diagnostics
 - `js/draft.js` — equal-odds lottery, scouting and hidden ratings, three draft picks, animated UI, and automatic picks
+- `js/generation.js` — post-draft ranking, random eligible team selection, highlighted cards, player reveals, automatic bulk-mode generation
 - `js/simulation.js` — schedule, regulation, best-of-seven playoffs and franchise/player records
 - `js/season-actions.js` — resumable season saves and playoff controls
 - `js/views.js`, `js/v13.js` — existing team, player and championship interfaces
