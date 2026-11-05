@@ -43,6 +43,7 @@ function applyDraftPick(index){
   released=team.roster.reduce((a,b)=>a.bonus<b.bonus||a.bonus===b.bonus&&a.year>=b.year?a:b);
   team.roster=team.roster.filter(x=>x.id!==released.id);
   released.retireSeason=state.season;
+  released.cutSeason=state.season+1;
   changed.set(released.id,released);
  }
  team.roster.push(p);
