@@ -31,7 +31,7 @@ function prospectRange(actual){
 }
 function revealDraftProspects(){
  const d=state.draft;
- if(!d||!d.lottery||d.prospects)throw Error('Prospects cannot be revealed yet.');
+ if(!d||!d.lottery||d.prospects||(d.lotteryRevealed??d.lottery.length)!==d.lottery.length)throw Error('Reveal all three lottery picks before showing prospects.');
  const mystery=randint(0,3);
  d.prospects=Array.from({length:4},(_,i)=>{
   const bonus=weighted(state.settings.draftWeights),year=randint(1,Math.min(3,state.settings.careerLength));
@@ -100,7 +100,7 @@ function autoDraftChoice(d){
 function completeDraftAutomatically(){
  if(!state.draft)return [];
  const d=state.draft,changed=new Map();
- if(!d.lottery)drawDraftLottery();
+ if(!d.lottery||((d.lotteryRevealed??d.lottery.length)<d.lottery.length))drawDraftLottery();
  if(!d.prospects)revealDraftProspects();
  while(d.picks.length<3){
   if(d.phase==='pick-reveal')advanceDraftPickReveal();
