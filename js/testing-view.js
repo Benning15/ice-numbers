@@ -8,7 +8,8 @@ async function hydrateTestingOutcomeHistory(){
  const t=state.testing;
  if(!t||Number.isFinite(t.playoffTeamSeasons))return;
  const seasons=(await getAll('seasons')).sort((a,b)=>a.season-b.season);
- const records=seasons.slice(-Math.max(0,t.seasons||0));
+ const count=Math.min(seasons.length,Math.max(0,t.seasons||0));
+ const records=count?seasons.slice(-count):[];
  Object.assign(t,blankTeamOutcomes());
  for(const season of records)accumulateTeamOutcomes(t,season.standings,season.championId);
  for(const checkpoint of [100,1000]){
