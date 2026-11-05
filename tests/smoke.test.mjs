@@ -108,14 +108,53 @@ assert.equal(lottery.phase,'summary');
 assert.equal(lottery.remaining,null);
 assert.equal(evaluate('state.generation?.phase'),'ranking');
 assert.equal(lottery.notes.filter(x=>x.includes(' drafted ')).length,3);
-const generation=parsed("(function(){state=initialState();state.settings.generatedPlayersPerSeason=0;simulateSeason();beginSeason();const first=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;while(state.activeSeason){let x=playNextGames();if(x.completed)finishSeason()}state.settings.generatedPlayersPerSeason=2;completeDraftAutomatically();const before=JSON.stringify(state.teams.map(t=>t.roster.map(p=>p.id)));const sorted=state.generation.ranked.map(x=>x.base);drawGenerationTeams();const selected=state.generation.selected.slice();const eligible=state.generation.ranked.filter(x=>x.rosterCount<3).map(x=>x.teamId);viewGenerationWinners();const created=generateOffseasonPlayers();const after=state.generation.results.slice();const stage=state.generation.phase;finishGenerationStage();beginSeason();const second=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;return {first,second,before,sorted,selected,eligible,created:created.map(p=>({id:p.id,bonus:p.bonus})),after,stage,year:state.generatedForSeason,rosters:state.teams.map(t=>t.roster.length)}})()");
+const generation=parsed("(function(){state=initialState();state.settings.generatedPlayersPerSeason=0;simulateSeason();beginSeason();const first=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;while(state.activeSeason){let x=playNextGames();if(x.completed)finishSeason()}state.settings.generatedPlayersPerSeason=2;completeDraftAutomatically();const before=JSON.stringify(state.teams.map(t=>t.roster.map(p=>p.id)));const sorted=state.generation.ranked.map(x=>x.base);drawGenerationTeams();const selected=state.generation.selected.slice();const eligible=state.generation.ranked.map(x=>x.teamId);viewGenerationWinners();const created=generateOffseasonPlayers();const after=state.generation.results.slice();const stage=state.generation.phase;finishGenerationStage();beginSeason();const second=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;return {first,second,before,sorted,selected,eligible,created:created.map(p=>({id:p.id,bonus:p.bonus})),after,stage,year:state.generatedForSeason,rosters:state.teams.map(t=>t.roster.length)}})()");
 assert.equal(generation.first,0);
 assert.ok(generation.second>=0&&generation.second<=2);
 assert.ok(generation.sorted.every((v,i,a)=>i===0||v<=a[i-1]),'team standings sorted descending by base +');
 assert.equal(new Set(generation.selected).size,generation.selected.length);
 assert.ok(generation.selected.every(id=>generation.eligible.includes(id)));
 assert.equal(generation.created.length,generation.selected.length);
-assert.ok(generation.after.every(r=>r.after===r.before+r.bonus));
+assert.ok(generation.after.every(r=>r.kept?(r.after===r.before+r.bonus-(r.cut?.bonus||0)):(r.after===r.before&&r.cut?.newPlayer)));
+const fullSelection=parsed("(function(){state=initialState();state.season=1;state.settings.generatedPlayersPerSeason=16;for(const t of state.teams)t.roster=[makeNewPlayer(t.id,'spawn',1),makeNewPlayer(t.id,'spawn',1),makeNewPlayer(t.id,'spawn',1)];startGenerationStage();drawGenerationTeams();const chosen=state.generation.selected.slice();viewGenerationWinners();generateOffseasonPlayers();return {chosen,results:state.generation.results,counts:state.teams.map(t=>t.roster.length)}})()");
+assert.equal(fullSelection.chosen.length,16,'every team remains eligible, including full rosters');
+assert.equal(new Set(fullSelection.chosen).size,16);
+assert.equal(fullSelection.results.length,16);
+assert.ok(fullSelection.counts.every(n=>n===3));
+const cutCases=parsed("(function(){
+ function scenario(roster,newBonus){
+  state=initialState();state.season=1;state.settings.careerLength=1;
+  state.settings.normalWeights=Array.from({length:8},(_,i)=>i+1===newBonus?100:0);
+  const t=state.teams[0];
+  t.roster=roster.map(([bonus,year],i)=>makeNewPlayer(0,'spawn',1,{bonus,year,name:'Incumbent '+i}));
+  // Deliberately invert effective strength. Replacement must never use Motivation.
+  for(const p of t.roster)p.motivation=p.bonus===roster[0][0]?2:-2;
+  startGenerationStage();state.generation.selected=[0];state.generation.phase='teams';
+  const changed=generateOffseasonPlayers(),r=state.generation.results[0];
+  return {r,active:t.roster.map(p=>p.name),archived:changed.map(p=>({name:p.name,status:playerStatus(p),cutSeason:p.cutSeason}))};
+ }
+ return {
+  better:scenario([[2,4],[6,2],[8,1]],4),
+  youngerTie:scenario([[4,5],[4,3],[8,1]],4),
+  sameYearTie:scenario([[4,1],[6,1],[8,1]],4),
+  worse:scenario([[5,4],[6,2],[8,1]],4),
+  open:scenario([[5,2],[8,1]],4)
+ };
+})()");
+assert.equal(cutCases.better.r.cut.name,'Incumbent 0');
+assert.equal(cutCases.better.r.after,cutCases.better.r.before+2);
+assert.equal(cutCases.better.archived.find(x=>x.name==='Incumbent 0').status,'Cut');
+assert.equal(cutCases.youngerTie.r.cut.name,'Incumbent 0','the oldest equal-+ player must be cut');
+assert.equal(cutCases.youngerTie.r.after,cutCases.youngerTie.r.before);
+assert.ok(cutCases.youngerTie.r.kept);
+assert.equal(cutCases.sameYearTie.r.kept,false,'do not displace an equally rated/equally aged incumbent');
+assert.equal(cutCases.sameYearTie.r.cut.newPlayer,true);
+assert.equal(cutCases.sameYearTie.archived.find(x=>x.status==='Cut').cutSeason,2);
+assert.equal(cutCases.worse.r.kept,false);
+assert.equal(cutCases.worse.r.after,cutCases.worse.r.before);
+assert.equal(cutCases.open.r.cut,null);
+assert.equal(cutCases.open.r.after,cutCases.open.r.before+4);
+console.log('PASS: all 16 eligible including full rosters; higher base + wins and younger year breaks ties; Cut status is archived');
 assert.equal(generation.stage,'results');
 assert.equal(generation.year,3);
 assert.ok(generation.rosters.every(n=>n<=3));
