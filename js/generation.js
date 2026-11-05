@@ -90,7 +90,7 @@ function completeGenerationAutomatically(){
  if(!state.generation)return [];
  const g=state.generation;
  if(g.phase==='ranking')drawGenerationTeams();
- if(g.phase==='chosen')viewGenerationWinners();
+ if(g.phase==='chosen'){if((g.revealed??g.selected.length)<g.selected.length)drawGenerationTeams();viewGenerationWinners();}
  let changed=[];
  if(g.phase==='teams')changed=generateOffseasonPlayers();
  if(g.phase==='results')finishGenerationStage();
@@ -118,7 +118,8 @@ function generationView(){
   const cards=g.ranked.map(row=>generationTeamTile(row,shown,true)).join('');
   const controls=complete?
    '<button class="primary" data-generation-action="teams">View '+shown.length+' Selected Teams</button>':
-   '<button class="primary" data-generation-action="select-one">Generation Pick'+(g.count?' '+(shown.length+1)+'/'+g.count:'')+'</button><button data-generation-action="select-all">Sim All</button>';
+   (g.count===0?'<button class="primary" data-generation-action="select-all">Continue (0 picks)</button>':
+   '<button class="primary" data-generation-action="select-one">Generation Pick '+(shown.length+1)+'/'+g.count+'</button><button data-generation-action="select-all">Sim All</button>');
   $('app').innerHTML=summary+'<div class="panel"><div class="stickybar"><h2>All 16 teams · Highest + first</h2><span class="pill">'+shown.length+' / '+g.count+' selected</span></div><div class="generation-team-grid">'+cards+'</div><div class="buttonrow">'+controls+'</div></div>';
   return;
  }
