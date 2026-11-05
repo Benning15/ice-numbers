@@ -128,12 +128,12 @@ function draftView(){
  const revealed=d.lottery?d.lottery.slice(0,d.lotteryRevealed??d.lottery.length):[];
  if(d.phase==='lottery'||d.phase==='lottery-results'){
   const allShown=d.lottery&&revealed.length===d.lottery.length;
-  const cards=d.eligible.map(id=>draftTeamCard(id,d,revealed)).join('');
+  const cards=d.eligible.slice().sort((a,b)=>(d.originalTeamPlus?.[b]??bonusOf(state.teams[b]))-(d.originalTeamPlus?.[a]??bonusOf(state.teams[a]))||a-b).map(id=>draftTeamCard(id,d,revealed)).join('');
   const winners=revealed.length?'<div class="panel"><h2>Lottery picks · '+revealed.length+' of 3</h2><div class="draft-winner-grid">'+revealed.map((id,i)=>'<div class="draft-winner draft-winner-visible" style="--draft-delay:'+(i*.1)+'s"><span class="pill">Pick '+(i+1)+'</span>'+teamMark(id,true)+'<b>'+esc(state.teams[id].name)+'</b><strong>Team +'+(d.originalTeamPlus?.[id]??bonusOf(state.teams[id]))+'</strong></div>').join('')+'</div></div>':'';
   const buttons=allShown?'<button class="primary" data-draft-action="prospects">Reveal Four Prospects</button>':
    '<button class="primary" data-draft-action="lottery-pick">Lottery Pick'+(revealed.length?' '+(revealed.length+1)+'/3':' 1/3')+'</button>'+
    '<button data-draft-action="lottery-all">Sim All</button>';
-  $('app').innerHTML=head+'<div class="panel"><div class="stickybar"><h2>Eight lottery teams</h2><span class="pill">'+revealed.length+' / 3 picks revealed</span></div><div class="draft-lottery-grid">'+cards+'</div><div class="buttonrow">'+buttons+'</div></div>'+winners;
+  $('app').innerHTML=head+'<div class="panel"><div class="stickybar"><h2>Eight lottery teams · Highest + first</h2><span class="pill">'+revealed.length+' / 3 picks revealed</span></div><div class="draft-lottery-grid">'+cards+'</div><div class="buttonrow">'+buttons+'</div></div>'+winners;
   return;
  }
  const results=d.picks.length?'<div class="panel"><h3>Selections so far</h3>'+d.picks.map(p=>'<p class="record">Pick '+p.pick+' · '+esc(state.teams[p.teamId].name)+' · '+esc(p.name)+' · +'+p.bonus+' (Year '+p.year+') · <b>Team +'+(p.before??'?')+' → +'+(p.after??bonusOf(state.teams[p.teamId]))+'</b></p>').join('')+'</div>':'';
