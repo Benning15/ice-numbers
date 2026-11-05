@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 
-const files=['js/core.js','js/storage.js','js/scoring.js','js/draft.js','js/simulation.js',
+const files=['js/core.js','js/storage.js','js/scoring.js','js/draft.js','js/generation.js','js/simulation.js',
 'js/season-actions.js','js/views.js','js/v13.js','js/customization.js',
 'js/testing-view.js','js/scoring-estimator.js','js/app.js'];
 const sandbox=vm.createContext({console});
@@ -106,10 +106,20 @@ assert.equal(lottery.chosen.length,3);
 lottery.chosen.forEach((p,i)=>{assert.equal(p.team,lottery.winners[i]);assert.equal(p.bonus,p.expected.bonus);assert.equal(p.year,p.expected.year);assert.equal(p.origin,'draft')});
 assert.equal(lottery.phase,'summary');
 assert.equal(lottery.remaining,null);
+assert.equal(evaluate('state.generation?.phase'),'ranking');
 assert.equal(lottery.notes.filter(x=>x.includes(' drafted ')).length,3);
-const generation=parsed("(function(){state=initialState();simulateSeason();state.settings.generatedPlayersPerSeason=0;beginSeason();const first=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;while(state.activeSeason){let x=playNextGames();if(x.completed)finishSeason()}completeDraftAutomatically();state.settings.generatedPlayersPerSeason=2;beginSeason();const second=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;return {first,second}})()");
+const generation=parsed("(function(){state=initialState();state.settings.generatedPlayersPerSeason=0;simulateSeason();beginSeason();const first=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;while(state.activeSeason){let x=playNextGames();if(x.completed)finishSeason()}state.settings.generatedPlayersPerSeason=2;completeDraftAutomatically();const before=JSON.stringify(state.teams.map(t=>t.roster.map(p=>p.id)));const sorted=state.generation.ranked.map(x=>x.base);drawGenerationTeams();const selected=state.generation.selected.slice();const eligible=state.generation.ranked.filter(x=>x.rosterCount<3).map(x=>x.teamId);viewGenerationWinners();const created=generateOffseasonPlayers();const after=state.generation.results.slice();const stage=state.generation.phase;finishGenerationStage();beginSeason();const second=state.activeSeason.events.filter(x=>x.includes(' generated ')).length;return {first,second,before,sorted,selected,eligible,created:created.map(p=>({id:p.id,bonus:p.bonus})),after,stage,year:state.generatedForSeason,rosters:state.teams.map(t=>t.roster.length)}})()");
 assert.equal(generation.first,0);
 assert.ok(generation.second>=0&&generation.second<=2);
+assert.ok(generation.sorted.every((v,i,a)=>i===0||v<=a[i-1]),'team standings sorted descending by base +');
+assert.equal(new Set(generation.selected).size,generation.selected.length);
+assert.ok(generation.selected.every(id=>generation.eligible.includes(id)));
+assert.equal(generation.created.length,generation.selected.length);
+assert.ok(generation.after.every(r=>r.after===r.before+r.bonus));
+assert.equal(generation.stage,'results');
+assert.equal(generation.year,3);
+assert.ok(generation.rosters.every(n=>n<=3));
+console.log('PASS: generation ceremony order, qualified team selection, one player per team, no double spawning');
 console.log('PASS: equal-odds lottery, 4 pre-rolled prospects, 1 concealed card, 3 revealed picks and configurable random generation');
 
 const stats=parsed("(function(){state=initialState();for(let i=0;i<100;i++)simulateSeason();const t=testingData();return {s:t.seasons,n:t.teamSeasons,p:t.playerSeasons,games:t.games,goals:t.goals,checkpoint:t.checkpoints[100],groups:t.byStrength,generated:t.generation,counts:state.teams.map(x=>x.roster.length)}})()");
@@ -170,5 +180,7 @@ assert.match(evaluate('ratingHtml({bonus:8,motivation:1})'),/rating-silver/);
 assert.match(readFileSync('js/storage.js','utf8'),/IceNumbersV14/);
 assert.match(readFileSync('index.html','utf8'),/js\/testing-view\.js/);
 assert.match(readFileSync('index.html','utf8'),/js\/draft\.js/);
+assert.match(readFileSync('index.html','utf8'),/js\/generation\.js/);
+assert.equal(evaluate('TAB_NAMES.generation'),'Player Generation');
 console.log('PASS: Settings, Testing Information, old save isolation and silver/gold ratings');
 console.log('All V1.4 smoke tests passed.');

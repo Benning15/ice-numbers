@@ -14,6 +14,8 @@ function nextRound(season){
 function beginSeason(){
  if(state.activeSeason)throw Error('Finish the current playoffs before starting another regular season.');
  if(state.draft)throw Error('Complete the offseason draft before starting a regular season.');
+ if(state.generation)throw Error('Complete offseason player generation before starting a regular season.');
+ if(state.season>0&&state.generatedForSeason!==state.season+1)throw Error('Complete player generation before starting a new season.');
  state.seasonComplete=false;
  const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(),events=(state.upcomingDraftNotes||[]).slice(),rosterStart={};
  state.upcomingDraftNotes=[];
@@ -36,16 +38,8 @@ function beginSeason(){
    }
   }
  }
- // Exactly N randomly selected eligible teams receive one generated player.
- // Draft picks were awarded after the previous championship, independently.
- if(!openingRosters){
-  const eligible=shuffleDraft(state.teams.filter(t=>t.roster.length<s.maxRoster).map(t=>t.id));
-  for(const id of eligible.slice(0,s.generatedPlayersPerSeason??DEFAULTS.generatedPlayersPerSeason)){
-   const t=state.teams[id],p=makeNewPlayer(id,'spawn',year);
-   t.roster.push(p);changed.set(p.id,p);
-   events.push(`${t.name} generated ${p.name} (+${p.bonus}, Year ${p.year})`);
-  }
- }
+ // Offseason generation is completed before this season starts. Never
+ // generate a second set of players when the regular season begins.
  for(const t of state.teams){for(const p of t.roster){if(rollPlayerMotivation(p,year))changed.set(p.id,p);if(ensureScoringTendency(p))changed.set(p.id,p);if('goalTarget' in p||'goalTargetSeason' in p){delete p.goalTarget;delete p.goalTargetSeason;changed.set(p.id,p)}}rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null}))}
  // Capture strength and initial player scoring once per season, after generation and Motivation.
  trackTeamStrength();
@@ -108,9 +102,12 @@ function finishSeason(){
 }
 function simulateSeason(){let all=[],changes=new Map();
  if(state.draft)for(const p of completeDraftAutomatically())changes.set(p.id,p);
+ if(!state.activeSeason&&state.season>0&&!state.generation&&state.generatedForSeason!==state.season+1)startGenerationStage();
+ if(state.generation)for(const p of completeGenerationAutomatically())changes.set(p.id,p);
  if(!state.activeSeason){let a=beginSeason();all.push(...a.games);for(let p of a.players)changes.set(p.id,p)}
  while(state.activeSeason){const a=playNextGames();all.push(...a.games);for(let p of a.players)changes.set(p.id,p);if(a.completed){const done=finishSeason();for(let p of done.players)changes.set(p.id,p);
   for(const p of completeDraftAutomatically())changes.set(p.id,p);
+  for(const p of completeGenerationAutomatically())changes.set(p.id,p);
   return {result:done.result,games:all,players:[...changes.values()]}}}
  throw Error('Season simulation interrupted');
 }
