@@ -15,6 +15,7 @@ function beginSeason(){
  if(state.activeSeason)throw Error('Finish the current playoffs before starting another regular season.');
  if(state.draft)throw Error('Complete the offseason draft before starting a regular season.');
  if(state.generation)throw Error('Complete offseason player generation before starting a regular season.');
+ if(state.season>0&&state.generatedForSeason!==state.season+1)throw Error('Complete player generation before starting a new season.');
  state.seasonComplete=false;
  const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(),events=(state.upcomingDraftNotes||[]).slice(),rosterStart={};
  state.upcomingDraftNotes=[];
