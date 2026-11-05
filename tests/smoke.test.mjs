@@ -121,7 +121,7 @@ assert.equal(fullSelection.chosen.length,16,'every team remains eligible, includ
 assert.equal(new Set(fullSelection.chosen).size,16);
 assert.equal(fullSelection.results.length,16);
 assert.ok(fullSelection.counts.every(n=>n===3));
-const cutCases=parsed("(function(){
+const cutCases=parsed(`(function(){
  function scenario(roster,newBonus){
   state=initialState();state.season=1;state.settings.careerLength=1;
   state.settings.normalWeights=Array.from({length:8},(_,i)=>i+1===newBonus?100:0);
@@ -140,7 +140,7 @@ const cutCases=parsed("(function(){
   worse:scenario([[5,4],[6,2],[8,1]],4),
   open:scenario([[5,2],[8,1]],4)
  };
-})()");
+})()`);
 assert.equal(cutCases.better.r.cut.name,'Incumbent 0');
 assert.equal(cutCases.better.r.after,cutCases.better.r.before+2);
 assert.equal(cutCases.better.archived.find(x=>x.name==='Incumbent 0').status,'Cut');
