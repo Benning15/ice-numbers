@@ -180,3 +180,16 @@
 .commissioner-entry:last-child{border-bottom:0}
 .commissioner-entry-break{display:block;height:4px}
 @media(max-width:650px){.commissioner-form,.commissioner-team-grid{grid-template-columns:1fr}}
+
+
+/* Team page: expandable per-season final-score archive. */
+.team-game-history>summary{cursor:pointer;font-weight:750}
+.team-game-history #team-games{margin-top:14px}
+.team-game-picker{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+.team-game-picker .select{min-width:170px;max-width:100%}
+.team-game-result{font-weight:850;white-space:nowrap;font-size:12px}
+.team-game-result.won{color:#8ce5d0}
+.team-game-result.lost{color:#eca3a3}
+.team-game-scoring{padding:8px 0;min-width:170px}
+.team-game-scoring .record{font-size:12px;margin:4px 0}
+.team-game-history .tablewrap{margin-top:12px}

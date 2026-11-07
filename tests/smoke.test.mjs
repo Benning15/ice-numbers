@@ -429,4 +429,44 @@ assert.match(nodes.app.innerHTML,/Manage rosters/);
 assert.match(nodes.app.innerHTML,/Trade players \(swap\)/);
 assert.match(nodes.app.innerHTML,/Transaction history/);
 console.log('PASS: commissioner navigation and form render');
+
+const teamGameLog=parsed(`(function(){
+ state=initialState();
+ const games=[
+  {id:'g1',season:8,stage:'regular',aId:0,bId:1,gameNo:1,scoreA:4,scoreB:3,winnerId:0,coin:true,goalEvents:[]},
+  {id:'g2',season:8,stage:'regular',aId:2,bId:0,gameNo:5,scoreA:2,scoreB:1,winnerId:2,coin:true,goalEvents:[]},
+  {id:'g3',season:8,stage:'regular',aId:0,bId:3,gameNo:9,scoreA:5,scoreB:1,winnerId:0,coin:false,goalEvents:[]},
+  {id:'g4',season:8,stage:'playoff',aId:4,bId:0,round:1,seriesNo:1,gameNo:1,scoreA:1,scoreB:3,winnerId:0,coin:false,goalEvents:[]},
+  {id:'g5',season:8,stage:'playoff',aId:0,bId:4,round:1,seriesNo:1,gameNo:2,scoreA:2,scoreB:3,winnerId:4,coin:true,goalEvents:[]},
+  {id:'g6',season:7,stage:'regular',aId:0,bId:5,gameNo:1,scoreA:0,scoreB:1,winnerId:5,coin:false}
+ ];
+ return {rows:teamSeasonGameRows(0,8,games),old:teamSeasonGameRows(0,7,games),
+  outcomes:games.filter(g=>g.season===8).map(g=>teamGameOutcome(g,0))};
+})()`);
+assert.equal(teamGameLog.rows.length,5);
+assert.ok(teamGameLog.rows[0].includes('4–3'));
+assert.ok(teamGameLog.rows[0].includes('W (OT)'));
+assert.ok(teamGameLog.rows[1].includes('1–2'));
+assert.ok(teamGameLog.rows[1].includes('OTL'));
+assert.ok(teamGameLog.rows[2].includes('5–1'));
+assert.ok(teamGameLog.rows[3].includes('Quarterfinals'));
+assert.ok(teamGameLog.rows[4].includes('L (OT)'));
+assert.ok(teamGameLog.rows[4].includes('2–3'));
+assert.equal(teamGameLog.old.length,1);
+assert.deepEqual(teamGameLog.outcomes,['W (OT)','OTL','W','W','L (OT)']);
+evaluate(`state=initialState();view='teams';selectedTeam=0;teamGamesTeam=0;teamGamesYear=null;
+teamGamesCache={id:0,years:[8,7],games:[
+ {id:'a',season:8,stage:'regular',aId:0,bId:1,gameNo:1,scoreA:2,scoreB:0,winnerId:0,coin:false,goalEvents:[]},
+ {id:'b',season:7,stage:'regular',aId:0,bId:2,gameNo:1,scoreA:1,scoreB:3,winnerId:2,coin:false,goalEvents:[]}
+]};renderTeamGameResults();`);
+assert.match(nodes['team-games'].innerHTML,/Season 8/);
+assert.match(nodes['team-games'].innerHTML,/2–0/);
+assert.match(nodes['team-games'].innerHTML,/team-game-season/);
+evaluate("teamGamesYear=7;renderTeamGameResults()");
+assert.match(nodes['team-games'].innerHTML,/Season 7/);
+assert.match(nodes['team-games'].innerHTML,/1–3/);
+assert.doesNotMatch(nodes['team-games'].innerHTML,/2–0/);
+assert.ok(readFileSync('js/views.js','utf8').includes('<summary>Game Results — By Season</summary>'));
+console.log('PASS: collapsible team game log, W/OTL/playoff OT labels, final scores, seasonal filter and scoring detail fallback');
+
 console.log('All V1.4 smoke tests passed.');
