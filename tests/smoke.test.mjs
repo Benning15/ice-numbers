@@ -204,6 +204,62 @@ assert.equal(resumeBulk.draft,null);
 assert.equal(resumeBulk.generation,null);
 console.log('PASS: saved 1/10-game batches, live standings, scoring totals, end-of-season + playoffs and partial bulk resume');
 
+const perTeamBatches=parsed(`(function(){
+ const samples=[];
+ for(const seasonLength of [30,45,60]){
+  state=initialState();state.settings.gamesPerTeam=seasonLength;
+  startRegularSeason();
+  const oneCount=regularBatchGameCount(1);
+  const first=playRegularGames(oneCount);
+  const gp1=state.regularSeason.standings.map(r=>r.played);
+  const tenCount=regularBatchGameCount(10);
+  const second=playRegularGames(tenCount);
+  const gp11=state.regularSeason.standings.map(r=>r.played);
+  const end=playRegularGames(Infinity);
+  samples.push({seasonLength,oneCount,oneGames:first.games.length,tenCount,tenGames:second.games.length,
+    gp1,gp11,total:first.games.length+second.games.length+end.games.length,
+    finalGp:state.activeSeason.standings.map(r=>r.played)});
+ }
+ // A V1.8 save could be in the middle of a round: don't duplicate games.
+ state=initialState();startRegularSeason();
+ playRegularGames(1);
+ const partialCount=regularBatchGameCount(1);
+ const partial=playRegularGames(partialCount);
+ const balanced=state.regularSeason.standings.map(r=>r.played);
+ const catchup=regularBatchGameCount(10);
+ const advance=playRegularGames(catchup);
+ const balancedEleven=state.regularSeason.standings.map(r=>r.played);
+ // Near the end of a 30-game season, clamp a 10-game request to 9 games.
+ playRegularGames(regularBatchGameCount(10));
+ const lastCount=regularBatchGameCount(10);
+ const last=playRegularGames(lastCount);
+ return {samples,partialCount,partialPlayed:partial.games.length,balanced,catchup,
+  afterCatchup:advance.games.length,balancedEleven,lastCount,lastPlayed:last.games.length,
+  complete:!!state.activeSeason,finalGp:state.activeSeason.standings.map(r=>r.played)};
+})()`);
+for(const sample of perTeamBatches.samples){
+ assert.equal(sample.oneCount,8);
+ assert.equal(sample.oneGames,8);
+ assert.ok(sample.gp1.every(n=>n===1),'all teams play exactly once per 1-game button');
+ assert.equal(sample.tenCount,80);
+ assert.equal(sample.tenGames,80);
+ assert.ok(sample.gp11.every(n=>n===11),'all teams advance ten additional games');
+ assert.equal(sample.total,sample.seasonLength*8);
+ assert.ok(sample.finalGp.every(n=>n===sample.seasonLength));
+}
+assert.equal(perTeamBatches.partialCount,7);
+assert.equal(perTeamBatches.partialPlayed,7);
+assert.ok(perTeamBatches.balanced.every(n=>n===1));
+assert.equal(perTeamBatches.catchup,80);
+assert.equal(perTeamBatches.afterCatchup,80);
+assert.ok(perTeamBatches.balancedEleven.every(n=>n===11));
+assert.equal(perTeamBatches.lastCount,72);
+assert.equal(perTeamBatches.lastPlayed,72);
+assert.equal(perTeamBatches.complete,true);
+assert.ok(perTeamBatches.finalGp.every(n=>n===30));
+console.log('PASS: 1 and 10 games PER TEAM, 8/80 league games, even GP on 30/45/60 schedules, legacy partial saves');
+
+
 const lottery=parsed("(function(){state=initialState();beginSeason();while(state.activeSeason){const x=playNextGames();if(x.completed)finishSeason()}const before=state.draft.eligible.slice(),season=state.season;drawDraftLottery();const winners=state.draft.lottery.slice();revealDraftProspects();const prospects=JSON.parse(JSON.stringify(state.draft.prospects)),chosen=[];for(let i=0;i<3;i++){const item=prospects[i];const drafted=applyDraftPick(item.index);const p=drafted.find(x=>x.name===item.name);chosen.push({team:p.teamId,bonus:p.bonus,year:p.year,expected:item,origin:p.origin});advanceDraftPickReveal()}const phase=state.draft.phase;finishDraft();return {before,winners,prospects,chosen,season,phase,remaining:state.draft,notes:state.upcomingDraftNotes}})()");
 assert.equal(lottery.before.length,8);
 assert.equal(new Set(lottery.before).size,8);
