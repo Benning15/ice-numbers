@@ -16,3 +16,5 @@ jobs:
         run: for file in js/*.js; do node --check "$file"; done
       - name: Run simulation smoke tests
         run: node tests/smoke.test.mjs
+      - name: Test atomic backup imports and streaming game history
+        run: node tests/storage-maintenance.test.mjs
