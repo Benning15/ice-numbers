@@ -42,8 +42,8 @@ function startRegularSeason(){
  // Offseason generation is completed before this season starts. Never
  // generate a second set of players when the regular season begins.
  for(const t of state.teams){for(const p of t.roster){if(rollPlayerMotivation(p,year))changed.set(p.id,p);if(ensureScoringTendency(p))changed.set(p.id,p);if('goalTarget' in p||'goalTargetSeason' in p){delete p.goalTarget;delete p.goalTargetSeason;changed.set(p.id,p)}}rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null}))}
- // Capture strength and initial player scoring once per season, after generation and Motivation.
- trackTeamStrength();
+ // Capture initial player scoring once per season, after generation and Motivation.
+ // Team strength is counted only once the regular season actually finishes.
  state.seasonGoalStart=Object.fromEntries(state.teams.flatMap(t=>t.roster.map(p=>[p.id,p.regGoals||0])));
  const before=state.teams.map(t=>({w:t.regW,l:t.regL,otl:t.regOTL||0,points:t.regPoints,coinW:t.regCoinW,coinL:t.regCoinL,gf:t.pointsFor,ga:t.pointsAgainst}));
  const rr=roundRobin(state.teams.map(t=>t.id)),legs=s.gamesPerTeam/15,schedule=[];
@@ -85,6 +85,7 @@ function playRegularGames(count){
  updateLiveStandings();
  const completed=r.nextGame===r.schedule.length;
  if(completed){
+  trackTeamStrength();
   const active={season:r.season,settings:r.settings,standings:r.standings,events:r.events,rosters:r.rosters,
    seedById:Object.fromEntries(r.standings.map(row=>[row.id,row.seed])),lastId:r.standings.at(-1).id,
    rounds:[],round:0,phase:'playoffs',gameCount:r.gameCount,coinCount:r.coinCount};
