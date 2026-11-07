@@ -1,6 +1,18 @@
-# Ice Numbers — V1.9.6 (tradeable future draft and generation opportunities)
+# Ice Numbers — V1.9.7 (final preseason team preview)
 
 A browser-based, 16-team hockey league simulator focused on unpredictable results, rare superstars, long-term league history, dynasties and droughts.
+
+## V1.9.7 — Final preseason team preview
+
+After the three-pick lottery and random player-generation ceremony, the game stops at a **Preseason Team Preview** page before playing any regular-season games. Season 1 also gets a preview: its opening rosters are generated and saved once when that page first opens, so they won't reroll on refresh.
+
+- All **16 team cards** are ranked by combined permanent **team +** and display the complete named-player roster (name, permanent +, and **career year / maximum career years**).
+- The **reigning champion** (winner of the immediately preceding season) has a **gold outline** and trophies at the bottom-right. There is one 🏆 per **consecutive championship**; for very long streaks, display five trophies and a +N remainder.
+- Each card displays either the team's ongoing **made-the-playoffs streak** or its **missed-the-playoffs streak**, using the most recently completed seasons. Season 1 has no reigning champion or prior playoff streaks.
+- Click a player name for the permanent player record. You may return to the preview and visit Commissioner Mode before starting games.
+- **Start Season** locks in the schedule and takes you to live standings without playing a game. Then use **Sim 1 Game / Team**, **Sim 10 Games / Team**, or **Finish Regular Season**. The preview also offers **Simulate Full Season** after inspection.
+- A manual regular-season simulation or single full-season simulation opens the preview first. Multi-season **10/100/1000** fast-forward skips these intermediate screens so large simulations can run unattended.
+- Existing saves already playing a regular season or playoffs continue normally. Archived records, draft/generation probabilities, and game-scoring behavior do not change.
 
 ## V1.9.6 tradeable future opportunities
 
@@ -108,6 +120,7 @@ An ordinary new league uses the V1.4 database (`IceNumbersV14`), separate from p
 - `js/commissioner.js` — offseason player moves, swaps, cuts and combined transaction history
 - `js/future-rights.js` — persistent one-time generation/draft rights, reassignment, redemption and Commissioner Mode controls
 - `js/simulation.js` — resumable regular-season schedule, live standings, regulation, best-of-seven playoffs and franchise/player records
+- `js/preseason.js` — manual pregame preview with team rosters, championship trophies, streaks and start-season controls
 - `js/season-actions.js` — resumable season saves and playoff controls
 - `js/views.js` — shared dashboard, standings, playoffs and season history views
 - `js/team-views.js` — team rosters, franchise history, game logs, and season/all-time scoring
