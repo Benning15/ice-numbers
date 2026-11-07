@@ -58,13 +58,14 @@ function startRegularSeason(){
 }
 function updateLiveStandings(){
  const r=state.regularSeason;if(!r)return;
+ const oldRanks=new Map((r.standings||[]).map(row=>[row.id,row.seed]));
  const rows=state.teams.map((t,i)=>{
   const old=r.before[i],w=t.regW-old.w,l=t.regL-old.l,otl=(t.regOTL||0)-old.otl;
   const gf=t.pointsFor-old.gf,ga=t.pointsAgainst-old.ga;
   return snapshotRow(t,{w,l,otl,points:t.regPoints-old.points,coinW:t.regCoinW-old.coinW,coinL:t.regCoinL-old.coinL,
    gf,ga,diff:gf-ga,games:w+l+otl,bonus:bonusOf(t),tieBreaker:r.tieBreakers[i]},0);
  }).sort(standingsSort);
- rows.forEach((row,i)=>row.seed=i+1);
+ rows.forEach((row,i)=>{row.seed=i+1;row.move=(oldRanks.get(row.id)??row.seed)-row.seed});
  r.standings=rows;
 }
 function playRegularGames(count){
