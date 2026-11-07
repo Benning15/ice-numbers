@@ -93,6 +93,16 @@ function commissionerPlayerSelect(teamId,id,field){
  return options.length?commissionerSelect(options,id,field):'<div class="sub tiny">No active players on this team</div>';
 }
 function commissionerHistoryText(event){
+ if(event.right){
+  const {kind,originId,fromId,toId}=event.right;
+  const source=esc(state.teams[originId]?.name||'Unknown team');
+  const from=esc(state.teams[fromId]?.name||'Unknown team');
+  const to=esc(state.teams[toId]?.name||'Unknown team');
+  return '<div class="commissioner-entry"><b>Season '+event.season+' · '+
+   (event.type==='right-used'?'Opportunity Used':'Opportunity Traded')+'</b>'+
+   '<div class="sub tiny">'+source+' — '+esc(futureRightLabel(kind))+' · '+
+   (event.type==='right-used'?'Used by '+to:from+' → '+to)+'</div></div>';
+ }
  const lines=event.players.map(p=>{
   const from=state.teams[p.fromTeamId]?.name||'Unknown Team',to=p.toTeamId==null?'Cut':state.teams[p.toTeamId]?.name||'Unknown Team';
   return esc(p.name)+' (+'+p.bonus+', Year '+p.year+') · '+esc(from)+' → '+esc(to);
@@ -101,7 +111,7 @@ function commissionerHistoryText(event){
 }
 function commissionerView(){
  commissionerNormalizeForm();
- titlebar('Commissioner Mode','Manually transfer, trade and cut players between seasons.');
+ titlebar('Commissioner Mode','Manually transfer players and future opportunities between seasons.');
  const locked=commissionerIsLocked(),f=commissionerForm,from=state.teams[f.fromTeam],to=state.teams[f.toTeam];
  const rosterCards=state.teams.map(t=>'<div class="commissioner-team"><div class="commissioner-team-head">'+
   teamMark(t.id)+'<b>'+esc(t.name)+'</b><strong>+'+bonusOf(t)+'</strong></div>'+
@@ -127,6 +137,7 @@ function commissionerView(){
   fromBox+destination+'</div>'+
   '<p class="sub tiny">'+esc(reason)+'</p><div class="buttonrow"><button class="primary" data-commissioner-submit="1" '+(blocked?'disabled':'')+'>'+
   (f.action==='move'?'Move Player':f.action==='trade'?'Trade Players':'Cut Player')+'</button></div></div>'+
+  futureRightsPanel()+
   '<div class="panel"><h2>Current rosters · All 16 teams</h2><div class="commissioner-team-grid">'+rosterCards+'</div></div>'+
   '<div class="panel"><div class="stickybar"><h2>Transaction history</h2><span class="sub tiny">'+(state.transactions||[]).length+' events</span></div>'+
   (history.length?history.map(commissionerHistoryText).join(''):'<p class="empty">No commissioner transactions yet.</p>')+'</div>';

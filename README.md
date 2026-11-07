@@ -1,6 +1,18 @@
-# Ice Numbers — V1.9.5 (stability, storage and code organization)
+# Ice Numbers — V1.9.6 (tradeable future draft and generation opportunities)
 
 A browser-based, 16-team hockey league simulator focused on unpredictable results, rare superstars, long-term league history, dynasties and droughts.
+
+## V1.9.6 tradeable future opportunities
+
+Commissioner Mode now has a **Trade Future Opportunities** section. Each team may transfer its **next random player-generation opportunity** and **next winning draft-lottery opportunity**. These are two separate, one-time assets per originating team: **only one outstanding right of each kind per original team**, never an unlimited stream of future chances.
+
+- The **original team** stays in the lottery with unchanged odds (7 randomly selected generation teams, and 3 draft winners drawn from the 8 non-playoff teams by default). A future right is not an immediate guaranteed pick.
+- The **current owner** receives the generated player or gets to choose a prospect **only when the original team eventually wins** the relevant selection. If that takes three, ten or more seasons, the right continues to wait.
+- After the right is used **once**, the originating team's next opportunity belongs to the original team again. Draft and generation rights are independent: using one does not use the other.
+- Rights can be transferred again before being used. Transferring an existing right changes its **current owner**, not the number of rights owed. A team can hold multiple rights originating from different teams and can receive its own opportunity in the same offseason.
+- The receiving team applies normal three-player roster limits and generation comparison rules. The original team does not receive a second player or get an extra lottery entry.
+- Trades and redemptions appear in Commissioner Mode's transaction history and persist in existing saves and exported JSON. Players may be moved separately in Commissioner Mode to complete player-for-right exchanges. Trading is permitted only when no season, draft or generation stage is in progress.
+- Old leagues without future-right records default to everyone owning their own next opportunity. No save migration or game-balance changes are required.
 
 ## V1.9.5 maintenance
 
@@ -93,7 +105,8 @@ An ordinary new league uses the V1.4 database (`IceNumbersV14`), separate from p
 - `js/draft.js` — equal-odds lottery, scouting and hidden ratings, three draft picks, animated UI, and automatic picks
 - `js/generation.js` — post-draft ranking, random eligible team selection, highlighted cards, player reveals, automatic bulk-mode generation
 - `js/season-scoring.js` — live/historical regular-season and playoff player scoring leaderboards
-- `js/commissioner.js` — offseason trades, moves, cuts, persistent team transaction history and roster controls
+- `js/commissioner.js` — offseason player moves, swaps, cuts and combined transaction history
+- `js/future-rights.js` — persistent one-time generation/draft rights, reassignment, redemption and Commissioner Mode controls
 - `js/simulation.js` — resumable regular-season schedule, live standings, regulation, best-of-seven playoffs and franchise/player records
 - `js/season-actions.js` — resumable season saves and playoff controls
 - `js/views.js` — shared dashboard, standings, playoffs and season history views

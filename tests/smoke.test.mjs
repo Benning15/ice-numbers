@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 
 const files=['js/core.js','js/storage.js','js/scoring.js','js/draft.js','js/generation.js','js/simulation.js',
-'js/season-actions.js','js/views.js','js/team-views.js','js/player-views.js','js/v13.js','js/customization.js',
+'js/future-rights.js','js/season-actions.js','js/views.js','js/team-views.js','js/player-views.js','js/v13.js','js/customization.js',
 'js/testing-view.js','js/scoring-estimator.js','js/season-scoring.js','js/commissioner.js','js/app.js'];
 const sandbox=vm.createContext({console});
 for(const file of files){
@@ -638,4 +638,97 @@ await evaluate("view='settings';render()");
 assert.equal(evaluate('teamGamesCache'),null,'leaving Team Records releases large game arrays');
 console.log('PASS: deferred team archive fetch, one-time indexed lookup and cache release on navigation');
 
-console.log('All V1.9.5 smoke tests passed.');
+
+const rights=parsed(`(function(){
+ state=initialState();state.season=1;state.generatedForSeason=2;
+ const genTrade=futureRightTransfer('generation',1,0),draftTrade=futureRightTransfer('draft',1,0);
+ let duplicateBlocked=false;try{futureRightTransfer('generation',1,0)}catch(err){duplicateBlocked=true}
+ const pendingBefore={generation:futureRightOwner('generation',1),draft:futureRightOwner('draft',1),
+  outstandingGen:Object.keys(state.futureRights.generation).length,outstandingDraft:Object.keys(state.futureRights.draft).length};
+ // A right may be traded AGAIN to a third team, then back, but never duplicated.
+ const relay=futureRightTransfer('generation',1,2);
+ const ownerAfterRelay=futureRightOwner('generation',1);
+ futureRightTransfer('generation',1,0);
+ const history=state.transactions.map(tx=>({type:tx.type,kind:tx.right?.kind,origin:tx.right?.originId,
+  from:tx.right?.fromId,to:tx.right?.toId}));
+ // Year 3: originating team 1 was not selected; its owner keeps waiting.
+ state.season=2;
+ startGenerationStage();
+ state.generation.phase='teams';state.generation.selected=[2];
+ generateOffseasonPlayers();
+ const afterSkipped=futureRightOwner('generation',1);
+ finishGenerationStage();
+ // Year 4: team 1 finally gets picked. The received player goes to team 0.
+ state.season=3;
+ startGenerationStage();
+ state.generation.phase='teams';state.generation.selected=[1];
+ const beforeEstevan=state.teams[0].roster.map(p=>p.id),beforeWeyburn=state.teams[1].roster.map(p=>p.id);
+ generateOffseasonPlayers();
+ const redeemed={...state.generation.results[0]};
+ const genAfter=futureRightOwner('generation',1);
+ const received=state.teams[0].roster.some(p=>p.id===redeemed.playerId);
+ const originNotCredited=state.teams[1].roster.map(p=>p.id).join(',')===beforeWeyburn.join(',');
+ const changed=state.teams[0].roster.map(p=>p.id).join(',')!==beforeEstevan.join(',');
+ finishGenerationStage();
+ // The NEXT opportunity returns to origin after the one traded chance is used.
+ state.season=4;
+ startGenerationStage();
+ state.generation.phase='teams';state.generation.selected=[1];
+ generateOffseasonPlayers();
+ const nextOriginResult={...state.generation.results[0]};
+ finishGenerationStage();
+ // The draft asset is STILL outstanding because team 1 has not won a draft pick.
+ const pendingDraft=futureRightOwner('draft',1);
+ state.season=5;state.draft={season:5,phase:'picking',lottery:[1,2,3],
+  prospects:[{index:0,name:'Right Prospect',bonus:6,year:1},
+   {index:1,name:'Second Prospect',bonus:3,year:2},
+   {index:2,name:'Third Prospect',bonus:2,year:1}],
+  picks:[]};
+ const beforeDraft=state.teams[0].roster.map(p=>p.id);
+ const updated=applyDraftPick(0);
+ const picked={...state.draft.picks[0]};
+ const draftConsumed=futureRightOwner('draft',1);
+ const draftPlayer=updated.find(p=>p.id===picked.playerId);
+ const ledger=state.transactions.map(tx=>({type:tx.type,kind:tx.right?.kind,originId:tx.right?.originId}));
+ const drawNoEffect={genCount:state.generation,otherOwner:futureRightOwner('draft',2)};
+ return {genTrade,draftTrade,duplicateBlocked,pendingBefore,relay:relay.event.right,ownerAfterRelay,
+  history,afterSkipped,redeemed,genAfter,received,originNotCredited,changed,nextOriginResult,
+  pendingDraft,picked,draftConsumed,draftPlayerTeam:draftPlayer?.teamId,
+  draftPlayerOnRoster:state.teams[0].roster.some(p=>p.id===picked.playerId),
+  ledger,drawNoEffect,
+  maxRoster:state.teams.every(t=>t.roster.length<=state.settings.maxRoster)};
+})()`);
+assert.equal(rights.duplicateBlocked,true,'the same future right cannot be assigned twice');
+assert.equal(rights.pendingBefore.generation,0);
+assert.equal(rights.pendingBefore.draft,0);
+assert.equal(rights.pendingBefore.outstandingGen,1);
+assert.equal(rights.pendingBefore.outstandingDraft,1);
+assert.equal(rights.ownerAfterRelay,2);
+assert.equal(rights.relay.fromId,0);
+assert.equal(rights.relay.toId,2);
+assert.equal(rights.afterSkipped,0,'right persists through unselected years');
+assert.equal(rights.redeemed.originTeamId,1);
+assert.equal(rights.redeemed.teamId,0);
+assert.equal(rights.received,true);
+assert.equal(rights.originNotCredited,true);
+assert.equal(rights.changed,true);
+assert.equal(rights.genAfter,1,'only one generation opportunity is traded');
+assert.equal(rights.nextOriginResult.teamId,1,'next generation goes back to original owner');
+assert.equal(rights.pendingDraft,0,'draft right persists independently until its origin wins lottery');
+assert.equal(rights.picked.originTeamId,1);
+assert.equal(rights.picked.teamId,0);
+assert.equal(rights.draftPlayerTeam,0);
+assert.equal(rights.draftPlayerOnRoster,true);
+assert.equal(rights.draftConsumed,1,'draft right is redeemed once when pick is made');
+assert.equal(rights.drawNoEffect.otherOwner,2);
+assert.equal(rights.maxRoster,true);
+assert.equal(rights.ledger.filter(x=>x.type==='right-used'&&x.kind==='generation').length,1);
+assert.equal(rights.ledger.filter(x=>x.type==='right-used'&&x.kind==='draft').length,1);
+assert.equal(evaluate('typeof futureRightsStore'),'function');
+evaluate("state=initialState();view='commissioner';commissionerView()");
+assert.match(nodes.app.innerHTML,/Trade Future Opportunities/);
+assert.match(nodes.app.innerHTML,/Next winning lottery draft opportunity/);
+assert.match(nodes.app.innerHTML,/Outstanding traded rights/);
+console.log('PASS: one future right per source and type, re-trading, long waits, winner-to-owner generation/draft, single redemption and UI');
+
+console.log('All V1.9.6 smoke tests passed.');
