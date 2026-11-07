@@ -79,18 +79,20 @@ async function preseasonPreviewView(){
   '<button data-nav="commissioner">Commissioner Mode</button></div></div>'+
   '<div class="preseason-grid">'+teams.map(preseasonTeamCard).join('')+'</div>'+
   '<div class="panel"><div class="buttonrow"><button class="primary" data-preseason-start="1" '+(busy?'disabled':'')+
-  '>Start Season '+(state.season+1)+'</button></div>'+
+  '>Start Season '+(state.season+1)+'</button><button data-preseason-full="1">Simulate Full Season</button></div>'+
   '<p class="sub tiny">Starting the season saves its schedule but does not simulate any games. Afterward, use Sim 1 Game / Team, Sim 10 Games / Team or Finish Regular Season.</p></div>';
 }
-async function startSeasonFromPreview(){
+async function startSeasonFromPreview(full=false){
  if(busy||!preseasonPreviewAvailable())return;
  busy=true;
  const previous=clone(state);
+ let startedSuccessfully=false;
  try{
   state.previewConfirmedForSeason=state.season+1;
   const started=startRegularSeason();
   await commitProgress([],started.players);
   view='standings';
+  startedSuccessfully=true;
   setBanner('Season '+state.regularSeason.season+' is ready. Choose how many games to simulate.');
  }catch(err){
   state=previous;
@@ -100,4 +102,5 @@ async function startSeasonFromPreview(){
   busy=false;
   await render();
  }
+ if(startedSuccessfully&&full)await runN(1);
 }
