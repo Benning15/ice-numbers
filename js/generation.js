@@ -153,7 +153,7 @@ async function performGenerationAction(action){
   else throw Error('Unknown generation action.');
   if(players.length)await commitProgress([],players);
   else await commitState();
-  view=state.generation?'generation':'dashboard';
+  view=state.generation?'generation':'preview';
   notice='';
  }catch(err){state=previous;setBanner('Could not save player generation: '+err.message,true)}
  finally{busy=false;await render()}
