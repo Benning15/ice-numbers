@@ -10,7 +10,7 @@ function ratingHtml(p){
 }
 function teamLink(id){return `<button class="linkbtn" data-team="${id}">${teamLabel(id)}</button>`}
 function renderNav(){ $('nav').innerHTML=Object.entries(TAB_NAMES).filter(([k])=>(k!=='draft'||!!state.draft)&&(k!=='generation'||!!state.generation)).map(([k,label])=>`<button class="navbtn ${(view===k||(view==='playerDetail'&&k==='players'))?'active':''}" data-nav="${k}">${label}</button>`).join('')}
-function seasonRows(s){return s.standings.map(r=>`<tr class="${r.seed===8?'cutoff':''}"><td>${r.seed}</td><td>${teamLink(r.id)}</td><td>${r.played}</td><td>${r.w}</td><td>${r.l}</td><td>${r.otl||0}</td><td><b>${r.points}</b></td><td>+${r.bonus}</td><td>${r.gf??'—'}</td><td>${r.ga??'—'}</td><td>${r.seed<=8?'<span class="pill">'+(s.phase==='regular'?'Top 8':'Playoffs')+'</span>':''}</td></tr>`)}
+function seasonRows(s){return s.standings.map(r=>`<tr class="${r.seed===8?'cutoff':''}"><td>${r.seed}${s.phase==='regular'&&r.move?'<span class="rank-move '+(r.move>0?'up':'down')+'">'+(r.move>0?'▲':'▼')+Math.abs(r.move)+'</span>':''}</td><td>${teamLink(r.id)}</td><td>${r.played}</td><td>${r.w}</td><td>${r.l}</td><td>${r.otl||0}</td><td><b>${r.points}</b></td><td>+${r.bonus}</td><td>${r.gf??'—'}</td><td>${r.ga??'—'}</td><td>${r.seed<=8?'<span class="pill">'+(s.phase==='regular'?'Top 8':'Playoffs')+'</span>':''}</td></tr>`)}
 function standingsTable(s){return `<div class="standings-layout">${table(['#','Team','GP','W','L','OTL','PTS','Roster +','GF','GA',''],seasonRows(s))}</div>`}
 function regularSeasonControls(){
  const r=state.regularSeason,n=r?r.nextGame:0,total=r?r.schedule.length:state.settings.gamesPerTeam*8;
