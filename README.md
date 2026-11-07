@@ -1,4 +1,4 @@
-# Ice Numbers — V1.7 (stepwise lottery and generation draws)
+# Ice Numbers — V1.8 (live regular seasons and season scoring)
 
 A browser-based, 16-team hockey league simulator focused on unpredictable results, rare superstars, long-term league history, dynasties and droughts.
 
@@ -14,6 +14,14 @@ A browser-based, 16-team hockey league simulator focused on unpredictable result
 - If regulation ends tied, **an even 50/50 coin flip decides the winner** independent of team strength, followed by exactly one scored overtime goal with eligible assists. The losing regular-season team earns one standings point.
 - Players' ratings improve scoring *odds*, but goals are not guaranteed and 4-, 5-, 6-goal games remain possible.
 - A base +8 player with a temporary effective rating of +9 displays **silver +8**; effective +10 displays **gold +8**. Their base +8 rating never changes.
+
+## Regular-season pace and scoring leaderboards
+
+- A regular season has a saved game schedule. From Dashboard, Standings or Season Scoring, choose **Sim 1 Game**, **Sim 10 Games**, or **Finish Regular Season**. Each click plays that many league-wide games (not games per team), updates win/loss/OTL/points and goal differential, and saves the results immediately.
+- Standings show all 16 teams in current order, live games played, and up/down arrows indicating movement since the previous simulated batch. Recent games are also listed. The top eight are provisional until the final regular-season game; the playoffs then start with the final seeds.
+- **Season Scoring** has a **Regular Season / Playoffs** dropdown and a season dropdown. It shows named-player GP, goals, assists, points and P/GP from actual saved game scoring events, including players with no points. Totals are for the selected season and competition only, never lifetime totals.
+- Stats remain viewable after the regular season finishes, through the playoffs, and for archived historical seasons. Player profiles also include the live regular season.
+- Bulk 1/10/100/1,000-season simulations remain available, including resuming and finishing a partly played regular season. Existing saved leagues, individual player records and the draft/generation logic remain compatible.
 
 ## Offseason lottery and random generation
 
@@ -42,7 +50,8 @@ An ordinary new league uses the V1.4 database (`IceNumbersV14`), separate from p
 - `js/scoring.js` — player ratings, motivation, independent goals, assists, overtime and diagnostics
 - `js/draft.js` — equal-odds lottery, scouting and hidden ratings, three draft picks, animated UI, and automatic picks
 - `js/generation.js` — post-draft ranking, random eligible team selection, highlighted cards, player reveals, automatic bulk-mode generation
-- `js/simulation.js` — schedule, regulation, best-of-seven playoffs and franchise/player records
+- `js/season-scoring.js` — live/historical regular-season and playoff player scoring leaderboards
+- `js/simulation.js` — resumable regular-season schedule, live standings, regulation, best-of-seven playoffs and franchise/player records
 - `js/season-actions.js` — resumable season saves and playoff controls
 - `js/views.js`, `js/v13.js` — existing team, player and championship interfaces
 - `js/testing-view.js` — long-term testing statistics

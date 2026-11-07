@@ -11,8 +11,9 @@ function nextRound(season){
  if(round===2)return [makeMatch(prev[0].winnerId,prev[1].winnerId,0,0)];
  throw Error('Unknown playoff round');
 }
-function beginSeason(){
- if(state.activeSeason)throw Error('Finish the current playoffs before starting another regular season.');
+// Start an actual resumable regular season. No games are played until requested.
+function startRegularSeason(){
+ if(state.activeSeason||state.regularSeason)throw Error('Finish the current season before starting another.');
  if(state.draft)throw Error('Complete the offseason draft before starting a regular season.');
  if(state.generation)throw Error('Complete offseason player generation before starting a regular season.');
  if(state.season>0&&state.generatedForSeason!==state.season+1)throw Error('Complete player generation before starting a new season.');
@@ -41,21 +42,66 @@ function beginSeason(){
  // Offseason generation is completed before this season starts. Never
  // generate a second set of players when the regular season begins.
  for(const t of state.teams){for(const p of t.roster){if(rollPlayerMotivation(p,year))changed.set(p.id,p);if(ensureScoringTendency(p))changed.set(p.id,p);if('goalTarget' in p||'goalTargetSeason' in p){delete p.goalTarget;delete p.goalTargetSeason;changed.set(p.id,p)}}rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null}))}
- // Capture strength and initial player scoring once per season, after generation and Motivation.
- trackTeamStrength();
+ // Capture initial player scoring once per season, after generation and Motivation.
+ // Team strength is counted only once the regular season actually finishes.
  state.seasonGoalStart=Object.fromEntries(state.teams.flatMap(t=>t.roster.map(p=>[p.id,p.regGoals||0])));
  const before=state.teams.map(t=>({w:t.regW,l:t.regL,otl:t.regOTL||0,points:t.regPoints,coinW:t.regCoinW,coinL:t.regCoinL,gf:t.pointsFor,ga:t.pointsAgainst}));
- const bonus=state.teams.map(bonusOf),rr=roundRobin(state.teams.map(t=>t.id)),legs=s.gamesPerTeam/15;
+ const rr=roundRobin(state.teams.map(t=>t.id)),legs=s.gamesPerTeam/15,schedule=[];
  for(let leg=0;leg<legs;leg++)for(const round of rr)for(let i=0;i<round.length;i++){
-  const [x,y]=round[i],a=state.teams[leg%2?y:x],b=state.teams[leg%2?x:y];
-  playGame(a,b,bonus[a.id],bonus[b.id],year,'regular',0,0,leg*rr.length+i+1,gs,changed)
+  const [x,y]=round[i];schedule.push({aId:leg%2?y:x,bId:leg%2?x:y});
  }
- const rows=state.teams.map((t,i)=>{let pre=before[i],now={w:t.regW-pre.w,l:t.regL-pre.l,otl:(t.regOTL||0)-pre.otl,points:t.regPoints-pre.points,coinW:t.regCoinW-pre.coinW,coinL:t.regCoinL-pre.coinL,gf:t.pointsFor-pre.gf,ga:t.pointsAgainst-pre.ga,diff:(t.pointsFor-pre.gf)-(t.pointsAgainst-pre.ga),games:s.gamesPerTeam,bonus:bonus[i],tieBreaker:random()};return snapshotRow(t,now,0)}).sort(standingsSort);
- rows.forEach((r,i)=>r.seed=i+1);
- const active={season:year,settings:s,standings:rows,events,rosters:rosterStart,seedById:Object.fromEntries(rows.map(r=>[r.id,r.seed])),lastId:rows.at(-1).id,rounds:[],round:0,phase:'playoffs',gameCount:gs.length,coinCount:gs.filter(g=>g.coin).length};
- active.rounds=[firstRound(active)];state.activeSeason=active;
- state.pendingDraftTeam=null;
- return {games:gs,players:[...changed.values()]};
+ const tieBreakers=state.teams.map(()=>random());
+ state.regularSeason={season:year,settings:s,schedule,nextGame:0,events,rosters:rosterStart,before,tieBreakers,
+  standings:[],phase:'regular',gameCount:0,coinCount:0,lastGames:[]};
+ updateLiveStandings();
+ return {games:[],players:[...changed.values()]};
+}
+function updateLiveStandings(){
+ const r=state.regularSeason;if(!r)return;
+ const oldRanks=new Map((r.standings||[]).map(row=>[row.id,row.seed]));
+ const rows=state.teams.map((t,i)=>{
+  const old=r.before[i],w=t.regW-old.w,l=t.regL-old.l,otl=(t.regOTL||0)-old.otl;
+  const gf=t.pointsFor-old.gf,ga=t.pointsAgainst-old.ga;
+  return snapshotRow(t,{w,l,otl,points:t.regPoints-old.points,coinW:t.regCoinW-old.coinW,coinL:t.regCoinL-old.coinL,
+   gf,ga,diff:gf-ga,games:w+l+otl,bonus:bonusOf(t),tieBreaker:r.tieBreakers[i]},0);
+ }).sort(standingsSort);
+ rows.forEach((row,i)=>{row.seed=i+1;row.move=(oldRanks.get(row.id)??row.seed)-row.seed});
+ r.standings=rows;
+}
+function playRegularGames(count){
+ const r=state.regularSeason;
+ if(!r)throw Error('No regular season in progress.');
+ const limit=count===Infinity?r.schedule.length:Math.max(0,Math.floor(count));
+ if(!Number.isFinite(limit)&&count!==Infinity)throw Error('Invalid number of games.');
+ const games=[],changed=new Map();
+ while(games.length<limit&&r.nextGame<r.schedule.length){
+  const {aId,bId}=r.schedule[r.nextGame],a=state.teams[aId],b=state.teams[bId];
+  playGame(a,b,bonusOf(a),bonusOf(b),r.season,'regular',0,0,r.nextGame+1,games,changed);
+  r.nextGame++;
+ }
+ r.gameCount+=games.length;
+ r.coinCount+=games.filter(g=>g.coin).length;
+ r.lastGames=games.slice(-10).map(g=>({aId:g.aId,bId:g.bId,scoreA:g.scoreA,scoreB:g.scoreB,coin:g.coin}));
+ updateLiveStandings();
+ const completed=r.nextGame===r.schedule.length;
+ if(completed){
+  trackTeamStrength();
+  const active={season:r.season,settings:r.settings,standings:r.standings,events:r.events,rosters:r.rosters,
+   seedById:Object.fromEntries(r.standings.map(row=>[row.id,row.seed])),lastId:r.standings.at(-1).id,
+   rounds:[],round:0,phase:'playoffs',gameCount:r.gameCount,coinCount:r.coinCount};
+  active.rounds=[firstRound(active)];
+  state.activeSeason=active;
+  state.regularSeason=null;
+  state.pendingDraftTeam=null;
+ }
+ return {games,players:[...changed.values()],completed};
+}
+// Preserve beginSeason for full-season simulations and existing save/test workflows.
+function beginSeason(){
+ const started=startRegularSeason();
+ const played=playRegularGames(Infinity);
+ const changed=new Map([...started.players,...played.players].map(p=>[p.id,p]));
+ return {games:played.games,players:[...changed.values()]};
 }
 function playNextGames(){
  const active=state.activeSeason;if(!active)throw Error('No playoffs in progress');
@@ -105,7 +151,10 @@ function simulateSeason(){let all=[],changes=new Map();
  if(state.draft)for(const p of completeDraftAutomatically())changes.set(p.id,p);
  if(!state.activeSeason&&state.season>0&&!state.generation&&state.generatedForSeason!==state.season+1)startGenerationStage();
  if(state.generation)for(const p of completeGenerationAutomatically())changes.set(p.id,p);
- if(!state.activeSeason){let a=beginSeason();all.push(...a.games);for(let p of a.players)changes.set(p.id,p)}
+ if(!state.activeSeason){
+  if(!state.regularSeason){const started=startRegularSeason();for(const p of started.players)changes.set(p.id,p)}
+  const played=playRegularGames(Infinity);all.push(...played.games);for(const p of played.players)changes.set(p.id,p);
+ }
  while(state.activeSeason){const a=playNextGames();all.push(...a.games);for(let p of a.players)changes.set(p.id,p);if(a.completed){const done=finishSeason();for(let p of done.players)changes.set(p.id,p);
   for(const p of completeDraftAutomatically())changes.set(p.id,p);
   for(const p of completeGenerationAutomatically())changes.set(p.id,p);

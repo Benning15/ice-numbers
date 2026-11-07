@@ -57,7 +57,7 @@ async function playerProfile(){
  if(view!=='playerDetail'||selectedPlayer!==id)return;
  if(!p){$('app').innerHTML='<div class="panel"><p class="empty">Player not found.</p><button data-nav="players">Back to Player History</button></div>';return}
  const entries=[...(p.history||[])];
- const a=state.activeSeason;
+ const a=state.activeSeason||state.regularSeason;
  if(a&&a.rosters?.[p.teamId]?.some(r=>r.id===p.id)&&!entries.some(e=>e.season===a.season)){
   entries.push({season:a.season,year:p.year,team:p.teamId,bonus:p.bonus,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null,champion:false,partial:true});
  }
