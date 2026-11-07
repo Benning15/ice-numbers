@@ -1,4 +1,4 @@
-# Ice Numbers — V1.9 (Commissioner Mode)
+# Ice Numbers — V1.9.1 (per-team regular-season batches)
 
 A browser-based, 16-team hockey league simulator focused on unpredictable results, rare superstars, long-term league history, dynasties and droughts.
 
@@ -27,7 +27,7 @@ A browser-based, 16-team hockey league simulator focused on unpredictable result
 
 ## Regular-season pace and scoring leaderboards
 
-- A regular season has a saved game schedule. From Dashboard, Standings or Season Scoring, choose **Sim 1 Game**, **Sim 10 Games**, or **Finish Regular Season**. Each click plays that many league-wide games (not games per team), updates win/loss/OTL/points and goal differential, and saves the results immediately.
+- A regular season has a saved game schedule. From Dashboard, Standings or Season Scoring, choose **Sim 1 Game**, **Sim 10 Games**, or **Finish Regular Season**. Each click plays **one or ten games for every team** (8 or 80 league games for a 16-team league), updates win/loss/OTL/points and goal differential, and saves the results immediately. Every click finishes complete scheduled rounds so teams remain even in games played; earlier V1.8 partial-round saves finish the incomplete round first.
 - Standings show all 16 teams in current order, live games played, and up/down arrows indicating movement since the previous simulated batch. Recent games are also listed. The top eight are provisional until the final regular-season game; the playoffs then start with the final seeds.
 - **Season Scoring** has a **Regular Season / Playoffs** dropdown and a season dropdown. It shows named-player GP, goals, assists, points and P/GP from actual saved game scoring events, including players with no points. Totals are for the selected season and competition only, never lifetime totals.
 - Stats remain viewable after the regular season finishes, through the playoffs, and for archived historical seasons. Player profiles also include the live regular season.
