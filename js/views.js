@@ -15,11 +15,11 @@ function standingsTable(s){return `<div class="standings-layout">${table(['#','T
 function regularSeasonControls(){
  const r=state.regularSeason,n=r?r.nextGame:0,total=r?r.schedule.length:state.settings.gamesPerTeam*8;
  return '<div class="buttonrow regular-game-controls">'+
-  '<button class="primary" data-regular="1" '+(busy?'disabled':'')+'>Sim 1 Game</button>'+
-  '<button class="primary" data-regular="10" '+(busy?'disabled':'')+'>Sim 10 Games</button>'+
+  '<button class="primary" data-regular="1" '+(busy?'disabled':'')+'>Sim 1 Game / Team</button>'+
+  '<button class="primary" data-regular="10" '+(busy?'disabled':'')+'>Sim 10 Games / Team</button>'+
   '<button data-regular="all" '+(busy?'disabled':'')+'>Finish Regular Season</button>'+
   '<button data-nav="scoring">Player Scoring</button></div>'+
-  (r?'<p class="sub tiny">League games played: '+fmt(n)+' / '+fmt(total)+'. These buttons play 1 or 10 total league games, not games per team.</p>':'<p class="sub tiny">Start with 1 game or 10 games across the league. You can also finish the regular season immediately.</p>');
+  (r?'<p class="sub tiny">League games played: '+fmt(n)+' / '+fmt(total)+'. Each click completes 1 or 10 scheduled rounds (8 or 80 total league games), giving every team the same number of games played.</p>':'<p class="sub tiny">Start with 1 or 10 games per team (8 or 80 total league games). You can also finish the regular season immediately.</p>');
 }
 function runButtons(){
  const current=state.activeSeason,regular=state.regularSeason;
