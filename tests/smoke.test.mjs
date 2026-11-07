@@ -469,4 +469,58 @@ assert.doesNotMatch(nodes['team-games'].innerHTML,/2–0/);
 assert.ok(readFileSync('js/views.js','utf8').includes('<summary>Game Results — By Season</summary>'));
 console.log('PASS: collapsible team game log, W/OTL/playoff OT labels, final scores, seasonal filter and scoring detail fallback');
 
+
+const teamSeasonStats=parsed(`(function(){
+ state=initialState();
+ const veteran={id:401,name:'Past Veteran',bonus:5};
+ const rookie={id:402,name:'New Rookie',bonus:8};
+ const setup={id:403,name:'Setup Specialist',bonus:3};
+ const seasons=[
+  {season:4,rosters:{0:[veteran]}},
+  {season:5,rosters:{0:[rookie,setup]}}
+ ];
+ const games=[
+  {id:'s4',season:4,stage:'regular',aId:0,bId:2,goalEvents:[{scorerId:401,assistIds:[]}]},
+  {id:'s5r1',season:5,stage:'regular',aId:0,bId:1,goalEvents:[{scorerId:402,assistIds:[403]}]},
+  {id:'s5r2',season:5,stage:'regular',aId:2,bId:0,goalEvents:[{scorerId:403,assistIds:[402]}]},
+  {id:'s5po',season:5,stage:'playoff',aId:0,bId:3,goalEvents:[{scorerId:402,assistIds:[403]}]}
+ ];
+ const reg=calculateSeasonScoring({0:[rookie,setup]},games.filter(g=>g.season===5),'regular');
+ const po=calculateSeasonScoring({0:[rookie,setup]},games.filter(g=>g.season===5),'playoff');
+ const older=calculateSeasonScoring({0:[veteran]},games.filter(g=>g.season===4),'regular');
+ const rows=teamSeasonPlayerRows(0,seasons[1],games,'regular');
+ return {reg,po,older,rows,seasons,games};
+})()`);
+assert.equal(teamSeasonStats.reg.length,2);
+assert.equal(teamSeasonStats.reg[0].name,'New Rookie');
+assert.equal(teamSeasonStats.reg[0].gp,2);
+assert.equal(teamSeasonStats.reg[0].g,1);
+assert.equal(teamSeasonStats.reg[0].a,1);
+assert.equal(teamSeasonStats.reg[0].points,2);
+assert.equal(teamSeasonStats.reg[1].gp,2);
+assert.equal(teamSeasonStats.reg[1].points,2);
+assert.equal(teamSeasonStats.po[0].name,'New Rookie');
+assert.equal(teamSeasonStats.po[0].gp,1);
+assert.equal(teamSeasonStats.po[0].points,1);
+assert.equal(teamSeasonStats.po[1].a,1);
+assert.equal(teamSeasonStats.older[0].name,'Past Veteran');
+assert.equal(teamSeasonStats.older[0].points,1);
+assert.ok(teamSeasonStats.rows.join('').includes('New Rookie'));
+assert.ok(!teamSeasonStats.rows.join('').includes('Past Veteran'));
+evaluate(`state=initialState();view='teams';selectedTeam=0;teamGamesTeam=0;teamGamesYear=5;
+ teamGamesCache={id:0,years:[5,4],seasons:${JSON.stringify(teamSeasonStats.seasons)},
+ games:${JSON.stringify(teamSeasonStats.games)}};renderTeamSeasonPlayerStats();`);
+assert.match(nodes['team-player-stats'].innerHTML,/Select season/);
+assert.match(nodes['team-player-stats'].innerHTML,/Season 5/);
+assert.match(nodes['team-player-stats'].innerHTML,/Regular Season/);
+assert.match(nodes['team-player-stats'].innerHTML,/Playoffs/);
+assert.match(nodes['team-player-stats'].innerHTML,/New Rookie/);
+assert.doesNotMatch(nodes['team-player-stats'].innerHTML,/Past Veteran/);
+evaluate("teamGamesYear=4;renderTeamSeasonPlayerStats()");
+assert.match(nodes['team-player-stats'].innerHTML,/Past Veteran/);
+assert.doesNotMatch(nodes['team-player-stats'].innerHTML,/New Rookie/);
+assert.ok(readFileSync('js/views.js','utf8').includes('<summary>Player Stats — By Season</summary>'));
+assert.ok(readFileSync('js/app.js','utf8').includes("e.target.id==='team-player-season'"));
+console.log('PASS: team-specific regular/playoff player stats, live and archived years, stats isolated from current roster');
+
 console.log('All V1.4 smoke tests passed.');
