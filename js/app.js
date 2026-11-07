@@ -146,7 +146,8 @@ async function boot(){
   state=saved?.value||await newUniverseState();
   state.settings={...clone(DEFAULTS),...(state.settings||{})};
   await hydrateTestingOutcomeHistory();
-  state.version=3;state.activeSeason??=null;state.regularSeason??=null;state.transactions??=[];state.nextTransactionId??=state.transactions.length?Math.max(...state.transactions.map(t=>t.id))+1:1;state.seasonComplete??=false;state.draft??=null;state.generation??=null;state.generatedForSeason??=null;state.upcomingDraftNotes??=[];
+  state.version=3;state.activeSeason??=null;state.regularSeason??=null;state.transactions??=[];state.nextTransactionId??=state.transactions.length?Math.max(...state.transactions.map(t=>t.id))+1:1;futureRightsStore();
+  futureRightsStore();state.seasonComplete??=false;state.draft??=null;state.generation??=null;state.generatedForSeason??=null;state.upcomingDraftNotes??=[];
   // Upgrade a V1.4 pending guaranteed last-place draft to the new lottery.
   // Existing player histories and saved game scores remain unchanged.
   if(!state.draft&&!state.activeSeason&&Number.isInteger(state.pendingDraftTeam)&&state.season>0){
