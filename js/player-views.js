@@ -50,7 +50,7 @@ function individualSeasonStatCell(r,key){
 // Only the currently examined season's games are loaded into memory at once.
 async function rebuildIndividualSeasonCache(key){
  const archives=await getAll('seasons');
- const active=state.activeSeason;
+ const active=state.regularSeason||state.activeSeason;
  const seasons=archives.slice();
  if(active&&!seasons.some(s=>s.season===active.season))seasons.push(active);
  seasons.sort((a,b)=>a.season-b.season);
