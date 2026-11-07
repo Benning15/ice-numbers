@@ -615,4 +615,27 @@ assert.ok(readFileSync('js/team-views.js','utf8').includes('function loadTeamGam
 assert.ok(readFileSync('js/player-views.js','utf8').includes('state.regularSeason||state.activeSeason'));
 console.log('PASS: backup import validation, view separation and lazy team-history loading');
 
+
+const htmlScripts=readFileSync('index.html','utf8');
+assert.ok(htmlScripts.indexOf('js/views.js')<htmlScripts.indexOf('js/team-views.js'));
+assert.ok(htmlScripts.indexOf('js/team-views.js')<htmlScripts.indexOf('js/player-views.js'));
+assert.ok(htmlScripts.indexOf('js/player-views.js')<htmlScripts.indexOf('js/app.js'));
+evaluate(`state=initialState();view='teams';selectedTeam=0;
+teamGamesCache={id:0,years:[1],games:null,seasons:[{season:1,rosters:{0:[{id:901,name:'Cached Player',bonus:5}]}}]};
+`);
+sandbox.historyFetches=0;
+evaluate(`getIndexAll=async function(store,index,key){historyFetches++;return [
+ {id:'test-live',season:1,stage:'regular',aId:0,bId:1,scoreA:2,scoreB:1,gameNo:1,winnerId:0,coin:false,
+ goalEvents:[{teamId:0,scorerId:901,assistIds:[]}]}
+]}`);
+await evaluate("loadTeamGameArchive()");
+assert.equal(sandbox.historyFetches,1);
+assert.match(nodes['team-games'].innerHTML,/2–1/);
+assert.match(nodes['team-player-stats'].innerHTML,/Cached Player/);
+await evaluate("loadTeamGameArchive()");
+assert.equal(sandbox.historyFetches,1,'reopening uses the already loaded team game history');
+await evaluate("view='settings';render()");
+assert.equal(evaluate('teamGamesCache'),null,'leaving Team Records releases large game arrays');
+console.log('PASS: deferred team archive fetch, one-time indexed lookup and cache release on navigation');
+
 console.log('All V1.9.5 smoke tests passed.');
