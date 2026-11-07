@@ -160,3 +160,5 @@
 .season-scoring-filters>div{display:flex;flex-direction:column;gap:6px;min-width:190px;flex:1}
 .season-scoring-filters .select{max-width:100%;width:100%}
 @media(max-width:650px){.regular-game-controls button{flex:1 1 130px}.season-scoring-filters>div{min-width:145px}}
+
+.rank-move{font-weight:800;font-size:10px;margin-left:5px;white-space:nowrap}.rank-move.up{color:#7bdcc8}.rank-move.down{color:#ed9b9b}
