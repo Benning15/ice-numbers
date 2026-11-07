@@ -90,11 +90,24 @@ function assistCandidates(team,excluded){
  }
  return out;
 }
+// Unidentified teammates can create extra goals only when a named player finishes.
+ // The empty candidate is an unconverted chance, not another unidentified goal.
+function unidentifiedPlaymakingCandidates(team,settings=state.settings){
+ const out=[{id:null,weight:1}];
+ for(const p of team.roster){
+  out.push({id:p.id,weight:Math.pow(.35+effectiveRating(p)/6,Number(settings.recipientCurve))});
+ }
+ return out;
+}
 function addGoal(team,stage,changed,scorerId,primaryId,source,ot=false){
  const roster=team.roster,assists=[],anonymous={count:0};
  const excluded=new Set(scorerId===null?[]:[scorerId]);
  let goalAssists=0;
- if(primaryId!==undefined&&primaryId!==null){
+ if(primaryId===null){
+  // Depth-player primary assist on a named player's goal.
+  anonymous.count=1;goalAssists=1;
+  if(random()*100<state.settings.secondaryAssistPct)goalAssists=2;
+ }else if(primaryId!==undefined){
   assists.push(primaryId);excluded.add(primaryId);goalAssists=1;
   if(random()*100<state.settings.secondaryAssistPct)goalAssists=2;
  }else{
@@ -125,6 +138,11 @@ function generateTeamGoals(team,stage,changed){
  }
  for(let i=0,n=scoringRoll(unidentifiedRate(team));i<n;i++){
   plays.push(addGoal(team,stage,changed,null,undefined,'unidentified'));
+ }
+ // These depth-created chances supplement, rather than replace, unidentified goals.
+ for(let i=0,n=scoringRoll(Number(state.settings.unnamedPlaymakingChancesPerGame??0));i<n;i++){
+  const scorer=pickWeighted(unidentifiedPlaymakingCandidates(team));
+  if(scorer!==null)plays.push(addGoal(team,stage,changed,scorer,null,'unidentified-playmaking'));
  }
  // One successful playmaking roll is ONE extra goal. Assign it to someone
  // OTHER than the creator, and credit the creator with the primary assist.

@@ -24,6 +24,7 @@ function settings(){
  val('tendencySpread','New player goal/assist tendency spread',0,40,1,'0 = everyone 50/50. At 25, new players range from 25/75 through 75/25. Existing players keep their permanent tendency.')+
  '<h3 class="mutedline">Unidentified roster</h3>'+
  val('unnamedGoalsPerGame','Unidentified independent goals/team/game',0,6,.05)+
+  val('unnamedPlaymakingChancesPerGame','Unidentified playmaking chances/team/game',0,4,.05,'Independent chances for depth players to set up an extra goal by a named player. Stronger named players finish more of these chances. Unconverted chances produce no goal. These do not reduce unidentified independent scoring; a converted chance gives an unidentified player the primary assist.')+
  val('unnamedIceTimeImpact','Star ice-time impact on unidentified scoring',0,1,.05,'0 = no reduction with named players; 1 = maximum reduction. Even superteams retain depth opportunities.')+
  val('unnamedRecipientWeight','Unidentified chance to finish a play',.1,15,.1)+
  val('unnamedAssistWeight','Unidentified chance to assist',.1,15,.1)+
@@ -45,7 +46,7 @@ async function saveSettings(makeDefault=false){
  const s=clone(state.settings);
  const specs={gamesPerTeam:[30,60,true],generatedPlayersPerSeason:[0,16,true],careerLength:[1,15,true],goalRateAt9:[0,3,false],
   playmakingRateAt9:[0,3,false],goalCurve:[.2,5,false],playmakingCurve:[.2,5,false],
-  goalVolatility:[0,1.5,false],tendencySpread:[0,40,true],unnamedGoalsPerGame:[0,6,false],
+  goalVolatility:[0,1.5,false],tendencySpread:[0,40,true],unnamedGoalsPerGame:[0,6,false],unnamedPlaymakingChancesPerGame:[0,4,false],
   unnamedIceTimeImpact:[0,1,false],unnamedRecipientWeight:[.1,15,false],
   unnamedAssistWeight:[.1,15,false],recipientCurve:[.2,4,false],
   unassistedPct:[0,100,true],oneAssistPct:[0,100,true],secondaryAssistPct:[0,100,true]};

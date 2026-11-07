@@ -13,13 +13,13 @@ function updateScoringEstimator(){
  const target=$('scoring-estimator-output');if(!target)return;
  const s={...state.settings};
  for(const k of ['goalRateAt9','playmakingRateAt9','goalCurve','playmakingCurve','goalVolatility',
-  'unnamedGoalsPerGame','unnamedIceTimeImpact','unnamedRecipientWeight','unnamedAssistWeight','recipientCurve']){
+  'unnamedGoalsPerGame','unnamedPlaymakingChancesPerGame','unnamedIceTimeImpact','unnamedRecipientWeight','unnamedAssistWeight','recipientCurve']){
   const input=$('cfg-'+k);
   if(!input||typeof input.value!=='string'||input.value.trim()===''||!Number.isFinite(Number(input.value))){target.textContent='Enter valid settings to see the estimate.';return}
   s[k]=Number(input.value);
  }
  if(!(s.goalRateAt9>=0&&s.playmakingRateAt9>=0&&s.goalCurve>0&&s.playmakingCurve>0&&
- s.unnamedGoalsPerGame>=0&&s.unnamedIceTimeImpact>=0&&s.unnamedIceTimeImpact<=1&&s.unnamedRecipientWeight>0&&s.recipientCurve>0)){
+ s.unnamedGoalsPerGame>=0&&s.unnamedPlaymakingChancesPerGame>=0&&s.unnamedIceTimeImpact>=0&&s.unnamedIceTimeImpact<=1&&s.unnamedRecipientWeight>0&&s.recipientCurve>0)){
   target.textContent='Check scoring settings first.';return;
  }
  const elems=[0,1,2].map(i=>$('preview-effective-'+i));
@@ -34,11 +34,20 @@ function updateScoringEstimator(){
   const sum=candidates.reduce((v,x)=>v+x.weight,0);
   if(sum>0)for(const x of candidates)x.row.fromPlays+=creator.created*x.weight/sum;
  }
+ // A depth-created chance either converts for a named player or produces no goal.
+ const depthCandidates=unidentifiedPlaymakingCandidates({roster:players},s);
+ const depthWeight=depthCandidates.reduce((sum,x)=>sum+x.weight,0);
+ for(const choice of depthCandidates){
+  if(choice.id===null)continue;
+  const goals=s.unnamedPlaymakingChancesPerGame*choice.weight/depthWeight;
+  rows.find(r=>r.id===choice.id).fromPlays+=goals;
+  unknown.created+=goals;
+ }
  const total=rows.concat(unknown).reduce((v,x)=>v+x.independent+x.fromPlays,0);
  target.innerHTML='<p class="record"><b>Expected team goals/game: '+total.toFixed(2)+'</b>'+
  ' · '+(total*s.gamesPerTeam).toFixed(0)+' over '+s.gamesPerTeam+' games at this constant lineup</p>'+
  table(['Source','Own goals/game','From teammates','Final goals/game','Created goals/game'],rows.concat(unknown).map(r=>
  '<tr><td>'+esc(r.label)+'</td><td>'+r.independent.toFixed(2)+'</td><td>'+r.fromPlays.toFixed(2)+'</td>'+
  '<td><b>'+(r.independent+r.fromPlays).toFixed(2)+'</b></td><td>'+r.created.toFixed(2)+'</td></tr>'))+
- '<p class="help">Created goals award primary assists to the creator. The table does not estimate additional random assists on independent goals or secondary assists. No goals are double-counted.</p>';
+ '<p class="help">Created goals award primary assists to the creator, including unidentified creators. Depth-created chances that do not convert add no goal. The table does not estimate additional random assists on independent goals or secondary assists. No goals are double-counted.</p>';
 }

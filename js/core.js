@@ -5,7 +5,7 @@ const LAST=['Andersson','Armstrong','Baker','Barkov','Bauer','Beaulieu','Bennett
 const DEFAULTS={gamesPerTeam:30,maxRoster:3,careerLength:5,playoffTeams:8,seriesBestOf:7,
  normalWeights:[40,27,16,9,4,2,1.5,.5],draftWeights:[13,18,20,18,13,9,6,3],startYear:1,generatedPlayersPerSeason:7,
  goalRateAt9:0.85,playmakingRateAt9:0.35,goalCurve:2,playmakingCurve:2,
- goalVolatility:0.2,unnamedGoalsPerGame:2.8,unnamedIceTimeImpact:0.55,
+ goalVolatility:0.2,unnamedGoalsPerGame:2.8,unnamedPlaymakingChancesPerGame:0.5,unnamedIceTimeImpact:0.55,
  unnamedRecipientWeight:3,unnamedAssistWeight:3,recipientCurve:1.3,
  tendencySpread:0,unassistedPct:6,oneAssistPct:19,secondaryAssistPct:55};
 const TAB_NAMES={dashboard:'Dashboard',standings:'Standings',playoffs:'Playoff Bracket',alltime:'All-Time Records',history:'Season History',draft:'Draft Lottery',generation:'Player Generation',preview:'Preseason Preview',scoring:'Season Scoring',commissioner:'Commissioner Mode',teams:'Team Records',players:'Player History',customize:'Team Customization',testing:'Testing Information',faq:'FAQ',settings:'Settings'};

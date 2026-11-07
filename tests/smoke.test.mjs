@@ -20,6 +20,44 @@ assert.equal(evaluate('DEFAULTS.playmakingRateAt9'),.35);
 assert.equal(evaluate('DEFAULTS.tendencySpread'),0);
 assert.equal(evaluate('DEFAULTS.maxRoster'),3);
 assert.equal(evaluate('DEFAULTS.generatedPlayersPerSeason'),7);
+assert.equal(evaluate('DEFAULTS.unnamedPlaymakingChancesPerGame'),.5);
+const setupRate=parsed(`(function(){
+ state=initialState();
+ const team=state.teams[0],p=makeNewPlayer(0,'spawn',1,{bonus:1,year:1});
+ p.motivation=0;p.goalTendency=50;team.roster=[p];
+ const c=unidentifiedPlaymakingCandidates(team),sum=c.reduce((n,x)=>n+x.weight,0);
+ const weakRate=state.settings.unnamedPlaymakingChancesPerGame*c[1].weight/sum;
+ p.bonus=8;
+ const d=unidentifiedPlaymakingCandidates(team),strongSum=d.reduce((n,x)=>n+x.weight,0);
+ const strongRate=state.settings.unnamedPlaymakingChancesPerGame*d[1].weight/strongSum;
+ return {weakRate,strongRate,depthIndependent:unidentifiedRate({roster:[]})};
+})()`);
+assert.ok(setupRate.weakRate>.13&&setupRate.weakRate<.17,'lone +1 gains about 0.15 created goals per game');
+assert.ok(setupRate.strongRate>setupRate.weakRate,'stronger named finishers benefit more');
+assert.equal(setupRate.depthIndependent,2.8,'depth independent scoring stays unchanged');
+const depthAssist=parsed(`(function(){
+ state=initialState();state.settings.unnamedGoalsPerGame=0;
+ state.settings.goalRateAt9=0;state.settings.playmakingRateAt9=0;
+ state.settings.unnamedPlaymakingChancesPerGame=4;state.settings.secondaryAssistPct=0;
+ const team=state.teams[0],p=makeNewPlayer(0,'spawn',1,{bonus:1,year:1});
+ p.motivation=0;team.roster=[p];
+ const games=Array.from({length:300},()=>generateTeamGoals(team,'regular',new Map())).flat();
+ const converted=games.filter(x=>x.source==='unidentified-playmaking');
+ const count=converted.length;
+ state.settings.unnamedPlaymakingChancesPerGame=0;
+ const noNewGoals=Array.from({length:30},()=>generateTeamGoals(team,'regular',new Map())).flat().length;
+ team.roster=[];state.settings.unnamedPlaymakingChancesPerGame=4;
+ const emptyGoals=Array.from({length:30},()=>generateTeamGoals(team,'regular',new Map())).flat().length;
+ return {count,noNewGoals,emptyGoals,examples:converted.slice(0,10),playerGoals:p.regGoals};
+})()`);
+assert.ok(depthAssist.count>25,'unidentified teammates must set up lone +1 player');
+assert.equal(depthAssist.playerGoals,depthAssist.count);
+assert.ok(depthAssist.examples.every(g=>g.scorerId!==null&&g.anonymousAssists===1&&g.assistsCount===1&&g.assistIds.length===0),
+ 'depth playmaking goals have an unidentified primary assist, never a self-assist');
+assert.equal(depthAssist.noNewGoals,0,'turning setting off restores old scoring');
+assert.equal(depthAssist.emptyGoals,0,'a team without named finishers gets no added goals');
+console.log('PASS: unidentified playmaking helps weak named players, scales with talent, preserves depth scoring and assists');
+
 assert.equal(evaluate('DEFAULTS.unassistedPct'),6);
 assert.equal(evaluate('DEFAULTS.oneAssistPct'),19);
 assert.equal(evaluate('typeof scoringWeight'),'undefined');
@@ -85,6 +123,7 @@ for(const length of [30,45,60]){
     assert.equal(new Set(play.assistIds).size,play.assistIds.length);
     assert.ok(!play.assistIds.includes(play.scorerId));
     if(play.source==='playmaking')assert.ok(play.assistIds.length>=1);
+    if(play.source==='unidentified-playmaking')assert.ok(play.scorerId!==null&&play.anonymousAssists>=1);
    }
   }
  }
