@@ -523,4 +523,79 @@ assert.ok(readFileSync('js/views.js','utf8').includes('<summary>Player Stats —
 assert.ok(readFileSync('js/app.js','utf8').includes("e.target.id==='team-player-season'"));
 console.log('PASS: team-specific regular/playoff player stats, live and archived years, stats isolated from current roster');
 
+
+const franchiseLeaders=parsed(`(function(){
+ state=initialState();
+ const alpha={id:701,name:'Traded Star',bonus:8},beta={id:702,name:'Franchise Legend',bonus:6};
+ const gamma={id:703,name:'Late Rookie',bonus:3},opp={id:704,name:'Rival Scorer',bonus:7};
+ const seasons=[
+  {season:1,rosters:{0:[alpha,beta],1:[opp]}},
+  {season:2,rosters:{0:[beta,gamma],1:[alpha,opp]}}
+ ];
+ const goals=(...plays)=>plays;
+ const games=[
+  {season:1,stage:'regular',aId:0,bId:1,goalEvents:goals(
+   {teamId:0,scorerId:701,assistIds:[702]},
+   {teamId:0,scorerId:702,assistIds:[701]},
+   {teamId:1,scorerId:704,assistIds:[]})},
+  {season:1,stage:'playoff',aId:1,bId:0,goalEvents:goals({teamId:0,scorerId:701,assistIds:[702]})},
+  {season:2,stage:'regular',aId:0,bId:1,goalEvents:goals(
+   {teamId:0,scorerId:703,assistIds:[702]},
+   {teamId:1,scorerId:701,assistIds:[]})},
+  {season:2,stage:'playoff',aId:1,bId:0,goalEvents:goals({teamId:0,scorerId:703,assistIds:[702]})}
+ ];
+ const players=franchiseAllTimeScorers(0,seasons,games);
+ const standings=Object.fromEntries(players.map(p=>[p.name,{
+  seasons:p.seasons,regular:franchiseAllTimeStage(p,'regular'),
+  playoff:franchiseAllTimeStage(p,'playoff'),combined:franchiseAllTimeStage(p,'combined')}]));
+ return {standings,count:players.length,rows:players};
+})()`);
+assert.equal(franchiseLeaders.count,3);
+assert.equal(franchiseLeaders.standings['Traded Star'].seasons,1);
+assert.equal(franchiseLeaders.standings['Traded Star'].regular.gp,1);
+assert.equal(franchiseLeaders.standings['Traded Star'].regular.points,2);
+assert.equal(franchiseLeaders.standings['Traded Star'].playoff.points,1);
+assert.equal(franchiseLeaders.standings['Traded Star'].combined.points,3,
+ 'Do not count games played for a different franchise after the trade');
+assert.equal(franchiseLeaders.standings['Franchise Legend'].seasons,2);
+assert.equal(franchiseLeaders.standings['Franchise Legend'].regular.gp,2);
+assert.equal(franchiseLeaders.standings['Franchise Legend'].regular.points,3);
+assert.equal(franchiseLeaders.standings['Franchise Legend'].playoff.points,2);
+assert.equal(franchiseLeaders.standings['Franchise Legend'].combined.points,5);
+assert.equal(franchiseLeaders.standings['Franchise Legend'].combined.gp,4);
+assert.equal(franchiseLeaders.standings['Late Rookie'].combined.points,2);
+assert.equal(franchiseLeaders.standings['Late Rookie'].combined.gp,2);
+const incompleteAllTime=parsed(`(function(){
+ const p={id:71,name:'Older Archive Star'};
+ const seasons=[{season:1,rosters:{0:[p]}},{season:2,rosters:{0:[p]}}];
+ const games=[{season:1,stage:'regular',aId:0,bId:1},{season:2,stage:'regular',aId:0,bId:1,goalEvents:[]}];
+ const s=franchiseAllTimeScorers(0,seasons,games);
+ return franchiseAllTimeStage(s[0],'regular');
+})()`);
+assert.equal(incompleteAllTime.gp,2);
+assert.equal(incompleteAllTime.incomplete,true);
+evaluate(`state=initialState();view='teams';selectedTeam=0;teamAllTimeMode='combined';
+teamGamesCache={id:0,seasons:[
+ {season:1,rosters:{0:[{id:701,name:'Traded Star'}, {id:702,name:'Franchise Legend'}]}},
+ {season:2,rosters:{0:[{id:702,name:'Franchise Legend'}, {id:703,name:'Late Rookie'}]}}
+],games:[
+ {season:1,stage:'regular',aId:0,bId:1,goalEvents:[{teamId:0,scorerId:701,assistIds:[702]}]},
+ {season:1,stage:'playoff',aId:0,bId:1,goalEvents:[{teamId:0,scorerId:701,assistIds:[]}]},
+ {season:2,stage:'regular',aId:0,bId:1,goalEvents:[{teamId:0,scorerId:702,assistIds:[]}]}
+]};renderTeamAllTimeScorers();`);
+assert.match(nodes['team-alltime'].innerHTML,/Franchise Legend/);
+assert.match(nodes['team-alltime'].innerHTML,/Traded Star/);
+assert.match(nodes['team-alltime'].innerHTML,/Late Rookie/);
+assert.match(nodes['team-alltime'].innerHTML,/Regular \+ Playoffs/);
+assert.match(nodes['team-alltime'].innerHTML,/team-alltime-mode/);
+assert.ok(nodes['team-alltime'].innerHTML.indexOf('Traded Star')<nodes['team-alltime'].innerHTML.indexOf('Franchise Legend'));
+evaluate("teamAllTimeMode='regular';renderTeamAllTimeScorers()");
+assert.match(nodes['team-alltime'].innerHTML,/Regular Season/);
+assert.match(nodes['team-alltime'].innerHTML,/Franchise Legend/);
+evaluate("teamAllTimeMode='playoff';renderTeamAllTimeScorers()");
+assert.match(nodes['team-alltime'].innerHTML,/Playoffs/);
+assert.ok(readFileSync('js/views.js','utf8').includes('<summary id="team-alltime-summary">All-Time Team Scoring Leaders</summary>'));
+assert.ok(readFileSync('js/app.js','utf8').includes("e.target.id==='team-alltime-mode'"));
+console.log('PASS: all-time franchise scorers, old teammates, trades, season isolation, stage dropdown and missing historic goal events');
+
 console.log('All V1.4 smoke tests passed.');
