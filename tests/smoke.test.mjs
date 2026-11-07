@@ -229,7 +229,7 @@ const perTeamBatches=parsed(`(function(){
  const catchup=regularBatchGameCount(10);
  const advance=playRegularGames(catchup);
  const balancedEleven=state.regularSeason.standings.map(r=>r.played);
- // Near the end of a 30-game season, clamp a 10-game request to 8 games.
+ // Near the end of a 30-game season, clamp a 10-game request to 9 games.
  playRegularGames(regularBatchGameCount(10));
  const lastCount=regularBatchGameCount(10);
  const last=playRegularGames(lastCount);
@@ -253,8 +253,8 @@ assert.ok(perTeamBatches.balanced.every(n=>n===1));
 assert.equal(perTeamBatches.catchup,80);
 assert.equal(perTeamBatches.afterCatchup,80);
 assert.ok(perTeamBatches.balancedEleven.every(n=>n===11));
-assert.equal(perTeamBatches.lastCount,64);
-assert.equal(perTeamBatches.lastPlayed,64);
+assert.equal(perTeamBatches.lastCount,72);
+assert.equal(perTeamBatches.lastPlayed,72);
 assert.equal(perTeamBatches.complete,true);
 assert.ok(perTeamBatches.finalGp.every(n=>n===30));
 console.log('PASS: 1 and 10 games PER TEAM, 8/80 league games, even GP on 30/45/60 schedules, legacy partial saves');
