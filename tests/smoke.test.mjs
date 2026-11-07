@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 
 const files=['js/core.js','js/storage.js','js/scoring.js','js/draft.js','js/generation.js','js/simulation.js',
-'js/season-actions.js','js/views.js','js/v13.js','js/customization.js',
+'js/season-actions.js','js/views.js','js/team-views.js','js/player-views.js','js/v13.js','js/customization.js',
 'js/testing-view.js','js/scoring-estimator.js','js/season-scoring.js','js/commissioner.js','js/app.js'];
 const sandbox=vm.createContext({console});
 for(const file of files){
@@ -466,7 +466,7 @@ evaluate("teamGamesYear=7;renderTeamGameResults()");
 assert.match(nodes['team-games'].innerHTML,/Season 7/);
 assert.match(nodes['team-games'].innerHTML,/1–3/);
 assert.doesNotMatch(nodes['team-games'].innerHTML,/2–0/);
-assert.ok(readFileSync('js/views.js','utf8').includes('<summary>Game Results — By Season</summary>'));
+assert.ok(readFileSync('js/team-views.js','utf8').includes('<summary>Game Results — By Season</summary>'));
 console.log('PASS: collapsible team game log, W/OTL/playoff OT labels, final scores, seasonal filter and scoring detail fallback');
 
 
@@ -519,7 +519,7 @@ assert.doesNotMatch(nodes['team-player-stats'].innerHTML,/Past Veteran/);
 evaluate("teamGamesYear=4;renderTeamSeasonPlayerStats()");
 assert.match(nodes['team-player-stats'].innerHTML,/Past Veteran/);
 assert.doesNotMatch(nodes['team-player-stats'].innerHTML,/New Rookie/);
-assert.ok(readFileSync('js/views.js','utf8').includes('<summary>Player Stats — By Season</summary>'));
+assert.ok(readFileSync('js/team-views.js','utf8').includes('<summary>Player Stats — By Season</summary>'));
 assert.ok(readFileSync('js/app.js','utf8').includes("e.target.id==='team-player-season'"));
 console.log('PASS: team-specific regular/playoff player stats, live and archived years, stats isolated from current roster');
 
@@ -594,8 +594,25 @@ assert.match(nodes['team-alltime'].innerHTML,/Regular Season/);
 assert.match(nodes['team-alltime'].innerHTML,/Franchise Legend/);
 evaluate("teamAllTimeMode='playoff';renderTeamAllTimeScorers()");
 assert.match(nodes['team-alltime'].innerHTML,/Playoffs/);
-assert.ok(readFileSync('js/views.js','utf8').includes('<summary id="team-alltime-summary">All-Time Team Scoring Leaders</summary>'));
+assert.ok(readFileSync('js/team-views.js','utf8').includes('<summary id="team-alltime-summary">All-Time Team Scoring Leaders</summary>'));
 assert.ok(readFileSync('js/app.js','utf8').includes("e.target.id==='team-alltime-mode'"));
 console.log('PASS: all-time franchise scorers, old teammates, trades, season isolation, stage dropdown and missing historic goal events');
 
-console.log('All V1.4 smoke tests passed.');
+
+// Maintenance regression: corrupted imports must fail before writing anything.
+const backupMeta=parsed("initialState()");
+const validBackup={format:'ice-numbers-v14',meta:backupMeta,seasons:[],games:[],players:[]};
+assert.equal(evaluate("typeof validateLeagueBackup"),'function');
+const validValidated=evaluate('validateLeagueBackup('+JSON.stringify(validBackup)+')');
+assert.equal(validValidated.meta.teams.length,16);
+assert.throws(()=>evaluate('validateLeagueBackup('+JSON.stringify({...validBackup,players:[{id:1},{id:1}]})+')'),/duplicate/);
+assert.throws(()=>evaluate('validateLeagueBackup('+JSON.stringify({...validBackup,games:[{season:1}]})+')'),/game/);
+assert.throws(()=>evaluate('validateLeagueBackup('+JSON.stringify({...validBackup,meta:{...backupMeta,teams:[]}})+')'),/team/);
+assert.ok(readFileSync('js/storage.js','utf8').includes('replaceLeagueAtomically('));
+assert.ok(readFileSync('index.html','utf8').includes('js/team-views.js'));
+assert.ok(readFileSync('index.html','utf8').includes('js/player-views.js'));
+assert.ok(readFileSync('js/team-views.js','utf8').includes('function loadTeamGameArchive()'));
+assert.ok(readFileSync('js/player-views.js','utf8').includes('state.regularSeason||state.activeSeason'));
+console.log('PASS: backup import validation, view separation and lazy team-history loading');
+
+console.log('All V1.9.5 smoke tests passed.');
