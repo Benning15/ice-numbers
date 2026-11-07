@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 
 const files=['js/core.js','js/storage.js','js/scoring.js','js/draft.js','js/generation.js','js/simulation.js',
-'js/future-rights.js','js/season-actions.js','js/views.js','js/team-views.js','js/player-views.js','js/v13.js','js/customization.js',
+'js/future-rights.js','js/season-actions.js','js/preseason.js','js/views.js','js/team-views.js','js/player-views.js','js/v13.js','js/customization.js',
 'js/testing-view.js','js/scoring-estimator.js','js/season-scoring.js','js/commissioner.js','js/app.js'];
 const sandbox=vm.createContext({console});
 for(const file of files){
@@ -731,4 +731,106 @@ assert.match(nodes.app.innerHTML,/Next winning lottery draft opportunity/);
 assert.match(nodes.app.innerHTML,/Outstanding traded rights/);
 console.log('PASS: one future right per source and type, re-trading, long waits, winner-to-owner generation/draft, single redemption and UI');
 
-console.log('All V1.9.6 smoke tests passed.');
+
+const preseasonCards=parsed(`(function(){
+ state=initialState();state.season=6;state.generatedForSeason=7;
+ state.teams[0].currentTitleStreak=3;state.teams[0].currentPlayoffStreak=4;state.teams[0].titles=4;
+ state.teams[0].roster=[{id:380,name:'Bruins Star',bonus:8,year:2},{id:381,name:'Bruins Rookie',bonus:4,year:1}];
+ state.teams[1].currentMissStreak=3;state.teams[1].currentTitleStreak=0;
+ const championCard=preseasonTeamCard(state.teams[0]);
+ const missedCard=preseasonTeamCard(state.teams[1]);
+ const champs=preseasonTrophies(state.teams[0]);
+ const checks={available:preseasonPreviewAvailable(),required:preseasonPreviewRequired(),
+  championCard,missedCard,champs,streak:preseasonPlayoffStreak(state.teams[0])};
+ state.previewConfirmedForSeason=7;
+ checks.noLongerRequired=!preseasonPreviewRequired();
+ return checks;
+})()`);
+assert.equal(preseasonCards.available,true);
+assert.equal(preseasonCards.required,true);
+assert.equal(preseasonCards.noLongerRequired,true);
+assert.match(preseasonCards.championCard,/reigning-champion/);
+assert.match(preseasonCards.championCard,/Reigning champion · 3 straight/);
+assert.match(preseasonCards.championCard,/Bruins Star/);
+assert.match(preseasonCards.championCard,/Year 2\/5/);
+assert.match(preseasonCards.championCard,/\+12/);
+assert.match(preseasonCards.championCard,/Made playoffs 4 consecutive seasons/);
+assert.equal((preseasonCards.champs.match(/🏆/g)||[]).length,3);
+assert.match(preseasonCards.missedCard,/Missed playoffs 3 consecutive seasons/);
+assert.doesNotMatch(preseasonCards.missedCard,/reigning-champion/);
+assert.ok(!preseasonCards.missedCard.includes('🏆'));
+const unbeatenCard=parsed(`(function(){
+ state=initialState();state.season=12;state.generatedForSeason=13;
+ state.teams[3].currentTitleStreak=10;
+ return {card:preseasonTeamCard(state.teams[3]),trophies:preseasonTrophies(state.teams[3])};
+})()`);
+assert.equal((unbeatenCard.trophies.match(/🏆/g)||[]).length,5);
+assert.match(unbeatenCard.trophies,/\+5/);
+assert.ok(readFileSync('styles.css','utf8').includes('.preseason-team-card.reigning-champion'));
+assert.ok(readFileSync('index.html','utf8').includes('js/preseason.js'));
+assert.equal(evaluate("TAB_NAMES.preview"),'Preseason Preview');
+console.log('PASS: 16-team preseason preview UI, champion gold borders, repeated trophies, roster + and playoff streaks');
+
+const openingBaseline=parsed(`(function(){
+ state=initialState();state.rngState=92919;state.initialSeed=92919;
+ const before=state.totalGames;
+ startRegularSeason();
+ return {before,after:state.totalGames,rosters:state.teams.map(t=>t.roster.map(p=>({id:p.id,bonus:p.bonus,year:p.year}))),
+  rng:state.rngState,notes:state.regularSeason.events,
+  next:state.regularSeason.nextGame,nextPlayer:state.nextPlayerId};
+})()`);
+const openingPreview=parsed(`(function(){
+ state=initialState();state.rngState=92919;state.initialSeed=92919;
+ const made=prepareOpeningRosters();
+ const rng=state.rngState;
+ const second=prepareOpeningRosters();
+ const rngAgain=state.rngState;
+ startRegularSeason();
+ return {before:0,after:state.totalGames,rosters:state.teams.map(t=>t.roster.map(p=>({id:p.id,bonus:p.bonus,year:p.year}))),
+  rng:state.rngState,notes:state.regularSeason.events,next:state.regularSeason.nextGame,
+  nextPlayer:state.nextPlayerId,firstCount:made.length,secondCount:second.length,identicalRng:rng===rngAgain};
+})()`);
+assert.deepEqual(openingPreview.rosters,openingBaseline.rosters,'preview does not alter opening players or RNG draw order');
+assert.deepEqual(openingPreview.notes,openingBaseline.notes);
+assert.equal(openingPreview.rng,openingBaseline.rng);
+assert.equal(openingPreview.nextPlayer,openingBaseline.nextPlayer);
+assert.equal(openingPreview.next,0);
+assert.equal(openingBaseline.after,0);
+assert.equal(openingPreview.after,0);
+assert.ok(openingPreview.firstCount>0);
+assert.equal(openingPreview.secondCount,0);
+assert.equal(openingPreview.identicalRng,true);
+console.log('PASS: first-season preview prepares exactly one opening roster without rerolling or simulating any games');
+
+sandbox.preseasonSavedPlayers=0;
+evaluate(`commitProgress=async function(games,players){
+ preseasonSavedPlayers+=players.length;return true;
+};`);
+evaluate("state=initialState();state.rngState=888;view='dashboard';busy=false");
+await evaluate("runRegularSeason('1')");
+assert.equal(evaluate('view'),'preview');
+assert.equal(evaluate('state.regularSeason'),null,'manual game sim must stop at mandatory preview');
+assert.equal(evaluate('state.totalGames'),0);
+assert.equal((nodes.app.innerHTML.match(/class="preseason-team-card/g)||[]).length,16);
+assert.match(nodes.app.innerHTML,/Final Team Preview/);
+assert.ok(sandbox.preseasonSavedPlayers>0,'first-year players are saved before the user begins');
+const savedCount=sandbox.preseasonSavedPlayers;
+await evaluate("preseasonPreviewView()");
+assert.equal(sandbox.preseasonSavedPlayers,savedCount,'refreshing the preview does not regenerate players');
+await evaluate("startSeasonFromPreview()");
+assert.equal(evaluate('view'),'standings');
+assert.equal(evaluate('state.regularSeason.nextGame'),0);
+assert.equal(evaluate('state.totalGames'),0);
+assert.equal(evaluate('state.previewConfirmedForSeason'),1);
+assert.equal(evaluate('preseasonPreviewAvailable()'),false);
+assert.match(nodes.app.innerHTML,/Sim 1 Game \/ Team/);
+evaluate(`state=initialState();state.season=1;state.generation={year:2,phase:'results'};view='generation';busy=false;
+ commitState=async function(){return true};`);
+await evaluate("performGenerationAction('finish')");
+assert.equal(evaluate('view'),'preview','generation ceremony ends at the team preview');
+assert.equal(evaluate('state.generatedForSeason'),2);
+assert.equal(evaluate('state.regularSeason'),null);
+assert.equal(evaluate('state.totalGames'),0);
+console.log('PASS: manual games require preview, persisted opening roster, start without games, and post-generation preview');
+
+console.log('All V1.9.7 smoke tests passed.');

@@ -15,6 +15,7 @@ async function runRegularSeason(mode='all'){
  if(busy||state.activeSeason)return;
  if(state.draft){view='draft';await render();return}
  if(state.generation){view='generation';await render();return}
+ if(preseasonPreviewRequired()&&!state.regularSeason){view='preview';await render();return}
  if(!['1','10','all'].includes(String(mode)))return;
  busy=true;
  const previous=clone(state);
