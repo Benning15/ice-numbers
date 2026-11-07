@@ -8,3 +8,46 @@ function commitSeason(season,games,players){return new Promise((resolve,reject)=
 // Keep this meta record when resetting a universe or importing a league.
 function commitDefaultSettings(settings){return new Promise((resolve,reject)=>{let tx=db.transaction('meta','readwrite');tx.objectStore('meta').put({key:'customSettingsDefaults',value:clone(settings)});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}
 function commitState(){return new Promise((resolve,reject)=>{let tx=db.transaction('meta','readwrite');tx.objectStore('meta').put({key:'main',value:clone(state)});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
+
+/**
+ * Replace the entire saved league in ONE IndexedDB transaction.
+ *
+ * Clearing data and re-inserting records in separate transactions can destroy
+ * the previous universe if an import fails midway. This queues small batches
+ * during request callbacks to keep the one transaction active, while allowing
+ * IndexedDB to roll back every clear and put if any operation fails.
+ *
+ * Keep the separate customSettingsDefaults meta record intact.
+ */
+function replaceLeagueAtomically(backup,nextState){
+ return new Promise((resolve,reject)=>{
+  let tx,error=null;
+  try{
+   tx=db.transaction(['meta','seasons','games','players'],'readwrite');
+   tx.oncomplete=()=>resolve();
+   tx.onerror=()=>{error??=tx.error||new Error('An IndexedDB import request failed.')};
+   tx.onabort=()=>reject(error||tx.error||new Error('The import was cancelled; your existing league is unchanged.'));
+   tx.objectStore('meta').delete('main');
+   const names=['seasons','games','players'];
+   for(const name of names)tx.objectStore(name).clear();
+   let storeIndex=0,offset=0;
+   const batchSize=200;
+   const queueNextBatch=()=>{
+    try{
+     let last=null;
+     for(let count=0;count<batchSize;count++){
+      while(storeIndex<names.length&&offset>=backup[names[storeIndex]].length){storeIndex++;offset=0}
+      if(storeIndex>=names.length)break;
+      last=tx.objectStore(names[storeIndex]).put(backup[names[storeIndex]][offset++]);
+     }
+     if(last)last.onsuccess=queueNextBatch;
+     else tx.objectStore('meta').put({key:'main',value:clone(nextState)});
+    }catch(err){error=err;try{tx.abort()}catch(_){}}
+   };
+   queueNextBatch();
+  }catch(err){
+   if(tx)try{tx.abort()}catch(_){}
+   reject(err);
+  }
+ });
+}
