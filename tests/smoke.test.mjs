@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const files=['js/core.js','js/storage.js','js/scoring.js','js/draft.js','js/generation.js','js/simulation.js',
 'js/season-actions.js','js/views.js','js/v13.js','js/customization.js',
-'js/testing-view.js','js/scoring-estimator.js','js/app.js'];
+'js/testing-view.js','js/scoring-estimator.js','js/season-scoring.js','js/app.js'];
 const sandbox=vm.createContext({console});
 for(const file of files){
  let source=readFileSync(file,'utf8');
@@ -93,6 +93,58 @@ for(const length of [30,45,60]){
 const resumed=parsed("(function(){state=initialState();beginSeason();const previous=state.activeSeason.gameCount;playNextGames();return {previous,now:state.activeSeason.gameCount}})()");
 assert.ok(resumed.now>resumed.previous);
 console.log('PASS: incremental playoff simulation');
+
+const liveRegular=parsed(`(function(){
+ state=initialState();state.rngState=314159265;
+ const opening=startRegularSeason(),total=state.regularSeason.schedule.length,initial=state.regularSeason.standings;
+ const first=playRegularGames(1),afterOne=state.regularSeason.standings,original=clone(state);
+ // Browser refresh: state is JSON-serializable and resumes without resimulating games.
+ state=clone(original);
+ const next=playRegularGames(10),afterEleven=state.regularSeason.standings;
+ const stage=calculateSeasonScoring(state.regularSeason.rosters,[...first.games,...next.games],'regular');
+ const gp=stage.reduce((sum,p)=>sum+p.gp,0);
+ const goals=stage.reduce((sum,p)=>sum+p.g,0),assists=stage.reduce((sum,p)=>sum+p.a,0);
+ const observedGoals=[...first.games,...next.games].flatMap(g=>g.goalEvents).filter(g=>g.scorerId!==null).length;
+ const observedAssists=[...first.games,...next.games].flatMap(g=>g.goalEvents).reduce((sum,g)=>sum+(g.assistIds||[]).length,0);
+ const remaining=playRegularGames(Infinity);
+ const finished=state.activeSeason;
+ const playoffGames=playNextGames().games;
+ const playoff=calculateSeasonScoring(finished.rosters,[...first.games,...next.games,...remaining.games,...playoffGames],'playoff');
+ const regular=calculateSeasonScoring(finished.rosters,[...first.games,...next.games,...remaining.games,...playoffGames],'regular');
+ return {total,opened:opening.players.length,initialPlayed:initial.map(r=>r.played),
+  first:first.games.length,afterOne:afterOne.reduce((sum,r)=>sum+r.played,0),
+  next:next.games.length,afterEleven:afterEleven.reduce((sum,r)=>sum+r.played,0),
+  saved:original.regularSeason.nextGame,nextIndex:state.regularSeason?.nextGame,
+  last:remaining.games.length,active:!!finished,allPlayed:finished.standings.map(r=>r.played),
+  playoffStarted:playoffGames.length>0,gp,goals,assists,observedGoals,observedAssists,
+  fullSeasonGP:regular.reduce((sum,p)=>sum+p.gp,0),
+  playoffG:playoff.reduce((sum,p)=>sum+p.g,0),
+  playoffExpected:playoffGames.flatMap(g=>g.goalEvents).filter(g=>g.scorerId!=null).length};
+})()`);
+assert.equal(liveRegular.total,240);
+assert.ok(liveRegular.initialPlayed.every(n=>n===0));
+assert.equal(liveRegular.first,1);
+assert.equal(liveRegular.afterOne,2);
+assert.equal(liveRegular.next,10);
+assert.equal(liveRegular.afterEleven,22);
+assert.equal(liveRegular.saved,1);
+assert.equal(liveRegular.last,229);
+assert.equal(liveRegular.active,true);
+assert.ok(liveRegular.allPlayed.every(n=>n===30));
+assert.equal(liveRegular.playoffStarted,true);
+assert.equal(liveRegular.goals,liveRegular.observedGoals);
+assert.equal(liveRegular.assists,liveRegular.observedAssists);
+assert.equal(liveRegular.playoffG,liveRegular.playoffExpected);
+assert.ok(liveRegular.fullSeasonGP>0);
+const resumeBulk=parsed("(function(){state=initialState();startRegularSeason();const one=playRegularGames(1);const p=one.games[0];const result=simulateSeason();return {first:p.id,played:result.games.filter(g=>g.stage==='regular').length,season:state.season,active:state.activeSeason,regular:state.regularSeason,draft:state.draft,generation:state.generation}})()");
+assert.equal(resumeBulk.played,239);
+assert.equal(resumeBulk.season,1);
+assert.equal(resumeBulk.regular,null);
+assert.equal(resumeBulk.active,null);
+assert.equal(resumeBulk.draft,null);
+assert.equal(resumeBulk.generation,null);
+console.log('PASS: saved 1/10-game batches, live standings, scoring totals, end-of-season + playoffs and partial bulk resume');
+
 const lottery=parsed("(function(){state=initialState();beginSeason();while(state.activeSeason){const x=playNextGames();if(x.completed)finishSeason()}const before=state.draft.eligible.slice(),season=state.season;drawDraftLottery();const winners=state.draft.lottery.slice();revealDraftProspects();const prospects=JSON.parse(JSON.stringify(state.draft.prospects)),chosen=[];for(let i=0;i<3;i++){const item=prospects[i];const drafted=applyDraftPick(item.index);const p=drafted.find(x=>x.name===item.name);chosen.push({team:p.teamId,bonus:p.bonus,year:p.year,expected:item,origin:p.origin});advanceDraftPickReveal()}const phase=state.draft.phase;finishDraft();return {before,winners,prospects,chosen,season,phase,remaining:state.draft,notes:state.upcomingDraftNotes}})()");
 assert.equal(lottery.before.length,8);
 assert.equal(new Set(lottery.before).size,8);
@@ -242,6 +294,8 @@ assert.match(evaluate('ratingHtml({bonus:8,motivation:1})'),/rating-silver/);
 assert.match(readFileSync('js/storage.js','utf8'),/IceNumbersV14/);
 assert.match(readFileSync('index.html','utf8'),/js\/testing-view\.js/);
 assert.match(readFileSync('index.html','utf8'),/js\/draft\.js/);
+assert.ok(readFileSync('index.html','utf8').includes('js/season-scoring.js'));
+assert.equal(evaluate('TAB_NAMES.scoring'),'Season Scoring');
 assert.ok(readFileSync('index.html','utf8').includes('js/generation.js'));
 evaluate("state=initialState();state.season=1;startGenerationStage();generationView()");
 assert.match(nodes.app.innerHTML,/Generation Pick/);
