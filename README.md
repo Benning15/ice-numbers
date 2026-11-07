@@ -1,6 +1,15 @@
-# Ice Numbers — V1.9.4 (franchise all-time scoring leaders)
+# Ice Numbers — V1.9.5 (stability, storage and code organization)
 
 A browser-based, 16-team hockey league simulator focused on unpredictable results, rare superstars, long-term league history, dynasties and droughts.
+
+## V1.9.5 maintenance
+
+- **Safer backups:** imported files are validated (including unique record keys) before touching saved data. A full league restore now uses a single, batched IndexedDB transaction. Any failed write rolls back all changes rather than clearing or partially overwriting the original league. Your existing browser-local preferences are preserved.
+- **Faster team history browsing:** opening Team Records no longer immediately loads every saved goal and assist from the franchise's entire history. Head-to-head results are streamed from an IndexedDB cursor without retaining all game records; full game logs, season stats, and all-time franchise leaders are loaded only when one of their sections is opened.
+- **Cleaner code:** the previously growing `js/views.js` was divided into shared views, `js/team-views.js`, and `js/player-views.js`; gameplay/scoring logic, data formats and existing league histories remain unchanged.
+- **Regression checks:** new tests cover storage rollback under a simulated partial import failure and streaming head-to-head accuracy; existing simulation tests still run.
+- **Live records:** individual-season player history now includes the current, partially played regular season.
+- Existing league saves and V1.4 JSON backups remain supported. We have not added cloud backups, and a browser's local data can still be deleted by clearing site storage—keep periodic exported JSON copies for important leagues.
 
 ## Core game rules
 
@@ -87,14 +96,18 @@ An ordinary new league uses the V1.4 database (`IceNumbersV14`), separate from p
 - `js/commissioner.js` — offseason trades, moves, cuts, persistent team transaction history and roster controls
 - `js/simulation.js` — resumable regular-season schedule, live standings, regulation, best-of-seven playoffs and franchise/player records
 - `js/season-actions.js` — resumable season saves and playoff controls
-- `js/views.js`, `js/v13.js` — existing team, player and championship interfaces
+- `js/views.js` — shared dashboard, standings, playoffs and season history views
+- `js/team-views.js` — team rosters, franchise history, game logs, and season/all-time scoring
+- `js/player-views.js` — player history, searching, sorting and individual seasons
+- `js/v13.js` — player career details and scoring-era UI
 - `js/testing-view.js` — long-term testing statistics
 - `js/customization.js` — names and team logos
 - `js/app.js` — settings, saved defaults, backups, navigation and startup
 - `tests/smoke.test.mjs` — simulation/regression checks
+- `tests/storage-maintenance.test.mjs` — atomic backup-restore and head-to-head cursor checks
 
 ## Local verification
 
-Run `node tests/smoke.test.mjs` for quick validation; run `ICE_NUMBERS_STRESS=1 node tests/smoke.test.mjs` for a real 1,000-season benchmark. Then run `for file in js/*.js; do node --check "$file"; done`.
+Run `node tests/smoke.test.mjs` and `node tests/storage-maintenance.test.mjs` for validation; run `ICE_NUMBERS_STRESS=1 node tests/smoke.test.mjs` for a real 1,000-season benchmark. Then run `for file in js/*.js; do node --check "$file"; done`.
 
 The app is static HTML and JavaScript, with no build step. GitHub Actions checks JavaScript syntax and simulation tests on pull requests and changes to `main`.
