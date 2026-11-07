@@ -1,4 +1,4 @@
-# Ice Numbers — V1.9.2 (team season game results)
+# Ice Numbers — V1.9.3 (team season player stats)
 
 A browser-based, 16-team hockey league simulator focused on unpredictable results, rare superstars, long-term league history, dynasties and droughts.
 
@@ -14,6 +14,14 @@ A browser-based, 16-team hockey league simulator focused on unpredictable result
 - If regulation ends tied, **an even 50/50 coin flip decides the winner** independent of team strength, followed by exactly one scored overtime goal with eligible assists. The losing regular-season team earns one standings point.
 - Players' ratings improve scoring *odds*, but goals are not guaranteed and 4-, 5-, 6-goal games remain possible.
 - A base +8 player with a temporary effective rating of +9 displays **silver +8**; effective +10 displays **gold +8**. Their base +8 rating never changes.
+
+## Team season player statistics
+
+- Every **Team Records** page now includes a collapsible **Player Stats — By Season** section alongside Game Results. Pick a season from either section's dropdown; both views stay synchronized.
+- See the actual **named players who appeared on that team's roster for the selected season**, including players who later retired, were cut, or were traded in a subsequent offseason. The current roster is never substituted for an older season's lineup.
+- Separate regular-season and playoff scoring tables display **GP, G, A, PTS and P/GP**, along with each player's permanent base rating. Click a player to open their career page.
+- Stats update after each simulated batch and remain available for archived seasons, using saved individual scoring events rather than career cumulative totals. Missing scoring detail in older game archives is marked as unavailable, not incorrectly counted as zero.
+- Existing league saves and simulation histories require no migration.
 
 ## Team season game-by-game results
 
