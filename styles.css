@@ -218,3 +218,32 @@
 .future-rights-outstanding{margin-top:18px;border-top:1px solid #354c62;padding-top:14px}
 .future-rights-outstanding summary{font-weight:700;cursor:pointer}
 .future-rights-outstanding .tablewrap{margin-top:12px;max-height:280px;overflow:auto}
+
+
+/* V1.9.7 — final 16-team preseason preview */
+.preseason-intro{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.preseason-intro>div:first-child{flex:1 1 440px}
+.preseason-intro h2{margin-bottom:6px}
+.preseason-intro p{margin-top:7px}
+.preseason-intro>.buttonrow{margin:0}
+.preseason-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.preseason-team-card{position:relative;display:flex;flex-direction:column;gap:12px;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:16px;min-width:0;min-height:245px}
+.preseason-team-card.reigning-champion{border:2px solid #e9bd62;box-shadow:0 0 0 1px #805c2a,0 3px 17px #bc8a3125;background:linear-gradient(160deg,#27251d,var(--panel) 52%)}
+.preseason-team-heading{display:flex;align-items:center;gap:10px;min-width:0}
+.preseason-team-heading .team-mark{flex-shrink:0}
+.preseason-team-title{min-width:0;flex:1}
+.preseason-team-title h3{margin:0;line-height:1.25;overflow-wrap:anywhere}
+.preseason-champion-label{display:block;margin-top:5px;font-size:11px;color:#f3ca75;font-weight:750}
+.preseason-plus{color:#93e8db;font-size:24px;font-weight:850;letter-spacing:-.6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.preseason-streak{border-top:1px solid #2c3d51;padding-top:8px;font-size:12px;font-weight:650;color:#bbd7eb}
+.reigning-champion .preseason-streak{border-top-color:#66512d}
+.preseason-roster{display:grid;gap:7px;padding-bottom:8px}
+.preseason-player{display:flex;align-items:baseline;justify-content:space-between;gap:6px;font-size:12px}
+.preseason-player-name{flex:1;min-width:0;overflow-wrap:anywhere}
+.preseason-player-meta{color:var(--muted);font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.preseason-empty{font-size:12px;color:var(--muted);font-style:italic}
+.preseason-trophies{position:relative;display:flex;align-items:center;align-self:flex-end;gap:1px;margin-top:auto;font-size:17px;min-height:21px}
+.preseason-more-trophies{color:#f3ca75;font-weight:850;font-size:12px;padding-left:3px}
+@media(max-width:1300px){.preseason-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:980px){.preseason-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:580px){.preseason-grid{grid-template-columns:1fr}.preseason-team-card{min-height:0}.preseason-intro>.buttonrow{margin-top:12px}}
