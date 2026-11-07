@@ -1,5 +1,16 @@
 'use strict';
 function commitProgress(games,players){return new Promise((resolve,reject)=>{let tx=db.transaction(['meta','games','players'],'readwrite');tx.objectStore('meta').put({key:'main',value:clone(state)});for(const g of games)tx.objectStore('games').put(g);for(const p of players)tx.objectStore('players').put(p);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}
+// Regular-season schedule is arranged as eight non-overlapping matchups per round.
+// Each "game per team" means one complete round (one appearance for every team).
+// A V1.8 partial save may be mid-round; finish that round before counting more.
+function regularBatchGameCount(gamesPerTeam){
+ const r=state.regularSeason;
+ if(!r)throw Error('No regular season in progress.');
+ if(!Number.isInteger(gamesPerTeam)||gamesPerTeam<1)throw Error('Invalid batch size.');
+ const perRound=state.teams.length/2;
+ const intoRound=r.nextGame%perRound;
+ return Math.min(r.schedule.length-r.nextGame,gamesPerTeam*perRound-intoRound);
+}
 async function runRegularSeason(mode='all'){
  if(busy||state.activeSeason)return;
  if(state.draft){view='draft';await render();return}
@@ -13,14 +24,14 @@ async function runRegularSeason(mode='all'){
    const started=startRegularSeason();
    for(const p of started.players)updated.set(p.id,p);
   }
-  const count=mode==='all'?Infinity:Number(mode),played=playRegularGames(count);
+  const count=mode==='all'?Infinity:regularBatchGameCount(Number(mode)),played=playRegularGames(count);
   games.push(...played.games);
   for(const p of played.players)updated.set(p.id,p);
   try{await commitProgress(games,[...updated.values()])}catch(e){state=previous;throw e}
   view='standings';
   setBanner(played.completed?
    'Regular season finished. Final standings and scoring are saved. The playoffs are ready.':
-   'Simulated '+games.length+' regular-season game'+(games.length===1?'':'s')+'. Standings and player scoring updated.');
+   'Simulated '+games.length+' league game'+(games.length===1?'':'s')+' (up to '+mode+' game'+(mode==='1'?'':'s')+' per team). Standings and player scoring updated.');
  }catch(e){console.error(e);state=previous;setBanner('Regular season simulation failed: '+e.message,true)}
  finally{busy=false;await render()}
 }
