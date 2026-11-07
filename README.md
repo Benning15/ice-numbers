@@ -40,7 +40,7 @@ Commissioner Mode now has a **Trade Future Opportunities** section. Each team ma
 - Teams have at most **three named players**, rated +1 through +8 at generation, plus an **unidentified roster**.
 - Players have permanent hidden motivation ranges and roll a new seasonal motivation value (−2 through +2); their **effective rating is 0–10**.
 - At the default setting, all players have a 50/50 goal/playmaking tendency. You can introduce permanent individual differences with **Tendency Spread**; these are *relative tendencies*, not guaranteed point ratios.
-- Games start **0–0**. Each named player rolls for independent goals and for successful playmaking opportunities. Unidentified players also roll for independent goals based on available ice time.
+- Games start **0–0**. Each named player rolls for independent goals and for successful playmaking opportunities. Unidentified players also roll for independent goals based on available ice time. Separately, they can set up additional goals for named players using the adjustable **Unidentified playmaking chances/team/game** setting (default **0.50**). Unconverted depth setups add no goal, and depth independent scoring is not reduced by this feature.
 - Each successful playmaking opportunity creates **one additional goal** scored by another named player or an unidentified player, and awards the creator a primary assist. A possible secondary assist does **not** create another goal.
 - Existing goals and the overtime winner can also have 0–2 assists. Nobody can assist on their own goal.
 - **Actual goals decide regulation results**, including playoffs. There is no separate 0–12 winner roll, regular-season bonus cap, or playoff seeding bonus.
@@ -102,7 +102,7 @@ Commissioner Mode now has a **Trade Future Opportunities** section. Each team ma
 
 ## Settings and Testing Information
 
-The **Settings** page allows tuning goal and playmaking rates around a +9 effective-rating benchmark, talent curves, Poisson scoring volatility, unidentified roster scoring/ice-time share, assist distribution, individual tendency variation, and +1 to +8 generation/draft probabilities, plus yearly league-wide random generation count. **Set as Default** saves preferences for future universes in the same browser.
+The **Settings** page allows tuning depth-player playmaking opportunities for named scorers (using the Finishing Talent Curve), goal and playmaking rates around a +9 effective-rating benchmark, talent curves, Poisson scoring volatility, unidentified roster scoring/ice-time share, assist distribution, individual tendency variation, and +1 to +8 generation/draft probabilities, plus yearly league-wide random generation count. **Set as Default** saves preferences for future universes in the same browser.
 
 The **Testing Information** tab tracks measured team and player scoring, combined team base and effective rating, average players/team, goals/game, production by effective rating, unidentified scoring by roster size, spawn/draft frequency, and unusual single-game and season performances. Cumulative snapshots appear after **100 and 1,000** completed test seasons. Testing counters can be reset without clearing the league history.
 
