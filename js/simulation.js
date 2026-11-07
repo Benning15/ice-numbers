@@ -11,6 +11,25 @@ function nextRound(season){
  if(round===2)return [makeMatch(prev[0].winnerId,prev[1].winnerId,0,0)];
  throw Error('Unknown playoff round');
 }
+// The first league's opening players must exist before its optional preview,
+// but never be generated twice (including after browser refresh). This helper
+// is also used by direct/full-season simulation for backward compatibility.
+function prepareOpeningRosters(){
+ if(state.season!==0||state.openingRostersPending!==true)return [];
+ state.openingRostersPending=false;
+ if(!state.teams.every(t=>t.roster.length===0))return [];
+ const made=[],s=state.settings,year=1;
+ state.upcomingDraftNotes??=[];
+ for(const t of state.teams){
+  const target=Math.min(s.maxRoster,weighted([10,15,40,35])-1);
+  for(let i=0;i<target;i++){
+   const p=makeNewPlayer(t.id,'spawn',year);
+   t.roster.push(p);made.push(p);
+   state.upcomingDraftNotes.push(t.name+' started with '+p.name+' (+'+p.bonus+', Year '+p.year+')');
+  }
+ }
+ return made;
+}
 // Start an actual resumable regular season. No games are played until requested.
 function startRegularSeason(){
  if(state.activeSeason||state.regularSeason)throw Error('Finish the current season before starting another.');
@@ -18,27 +37,11 @@ function startRegularSeason(){
  if(state.generation)throw Error('Complete offseason player generation before starting a regular season.');
  if(state.season>0&&state.generatedForSeason!==state.season+1)throw Error('Complete player generation before starting a new season.');
  state.seasonComplete=false;
- const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(),events=(state.upcomingDraftNotes||[]).slice(),rosterStart={};
+ const openingPlayers=prepareOpeningRosters();
+ const s=clone(state.settings),year=state.season+1,gs=[],changed=new Map(openingPlayers.map(p=>[p.id,p])),events=(state.upcomingDraftNotes||[]).slice(),rosterStart={};
  state.upcomingDraftNotes=[];
  // Reset display-only current-season scoring counters.
  for(const t of state.teams){t.scoringGF=0;t.scoringGP=0;}
- // Opening rosters have a 0–3 player distribution averaging exactly two.
- // This runs once at the first Season 1 simulation, not when the empty state
- // is created, so the initial teams/settings are still editable beforehand.
- const openingRosters=year===1&&state.openingRostersPending===true&&
-   state.teams.every(t=>t.roster.length===0);
- state.openingRostersPending=false;
- if(openingRosters){
-  for(const t of state.teams){
-   const target=Math.min(s.maxRoster,weighted([10,15,40,35])-1);
-   for(let i=0;i<target;i++){
-    const p=makeNewPlayer(t.id,'spawn',year);
-    t.roster.push(p);
-    changed.set(p.id,p);
-    events.push(`${t.name} started with ${p.name} (+${p.bonus}, Year ${p.year})`);
-   }
-  }
- }
  // Offseason generation is completed before this season starts. Never
  // generate a second set of players when the regular season begins.
  for(const t of state.teams){for(const p of t.roster){if(rollPlayerMotivation(p,year))changed.set(p.id,p);if(ensureScoringTendency(p))changed.set(p.id,p);if('goalTarget' in p||'goalTargetSeason' in p){delete p.goalTarget;delete p.goalTargetSeason;changed.set(p.id,p)}}rosterStart[t.id]=t.roster.map(p=>({id:p.id,name:p.name,bonus:p.bonus,year:p.year,origin:p.origin,ratingTier:p.bonus===8&&effectiveRating(p)===10?'gold':p.bonus===8&&effectiveRating(p)===9?'silver':null}))}
