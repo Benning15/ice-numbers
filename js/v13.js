@@ -68,10 +68,13 @@ async function playerProfile(){
  const status=playerStatus(p);
  const transactions=(p.transactions||[]).slice().sort((a,b)=>a.id-b.id);
  const teamPath=[];
- for(const h of (p.history||[]).slice().sort((a,b)=>a.season-b.season))if(teamPath.at(-1)!==h.team)teamPath.push(h.team);
- for(const tx of transactions){
-  if(teamPath.length===0&&tx.fromTeamId!=null)teamPath.push(tx.fromTeamId);
-  if(tx.toTeamId!=null&&teamPath.at(-1)!==tx.toTeamId)teamPath.push(tx.toTeamId);
+ if(transactions.length){
+  // Transactions are an explicit, ordered source of the club changes.
+  // Archived season rows continue to show the actual historic club each year.
+  if(transactions[0].fromTeamId!=null)teamPath.push(transactions[0].fromTeamId);
+  for(const tx of transactions)if(tx.toTeamId!=null&&teamPath.at(-1)!==tx.toTeamId)teamPath.push(tx.toTeamId);
+ }else{
+  for(const h of (p.history||[]).slice().sort((a,b)=>a.season-b.season))if(teamPath.at(-1)!==h.team)teamPath.push(h.team);
  }
  if(!teamPath.length)teamPath.push(p.teamId);
  const transactionPanel='<div class="panel"><h2>Team &amp; Transaction History</h2>'+
