@@ -162,3 +162,21 @@
 @media(max-width:650px){.regular-game-controls button{flex:1 1 130px}.season-scoring-filters>div{min-width:145px}}
 
 .rank-move{font-weight:800;font-size:10px;margin-left:5px;white-space:nowrap}.rank-move.up{color:#7bdcc8}.rank-move.down{color:#ed9b9b}
+
+
+/* V1.9 Commissioner Mode — manual offseason roster transactions. */
+.commissioner-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}
+.commissioner-form>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.commissioner-form .select{width:100%;min-height:39px}
+.commissioner-team-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+.commissioner-team{min-width:0;border:1px solid #354c62;border-radius:10px;background:#17253a;padding:12px}
+.commissioner-team-head{display:flex;align-items:center;gap:9px;margin-bottom:8px;min-width:0}
+.commissioner-team-head b{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px}
+.commissioner-team-head strong{font-size:19px;white-space:nowrap;font-variant-numeric:tabular-nums;color:#a3e4dc}
+.commissioner-roster-player{display:flex;justify-content:space-between;gap:9px;border-top:1px solid #314256;padding:7px 2px;font-size:12px}
+.commissioner-roster-player>span:first-child{flex:1;overflow-wrap:anywhere}
+.commissioner-roster-player>span:last-child{white-space:nowrap;color:#c3d8e8;font-variant-numeric:tabular-nums}
+.commissioner-entry{padding:12px 0;border-bottom:1px solid #34475c}
+.commissioner-entry:last-child{border-bottom:0}
+.commissioner-entry-break{display:block;height:4px}
+@media(max-width:650px){.commissioner-form,.commissioner-team-grid{grid-template-columns:1fr}}

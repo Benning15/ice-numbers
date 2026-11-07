@@ -1,4 +1,4 @@
-# Ice Numbers — V1.8 (live regular seasons and season scoring)
+# Ice Numbers — V1.9 (Commissioner Mode)
 
 A browser-based, 16-team hockey league simulator focused on unpredictable results, rare superstars, long-term league history, dynasties and droughts.
 
@@ -14,6 +14,16 @@ A browser-based, 16-team hockey league simulator focused on unpredictable result
 - If regulation ends tied, **an even 50/50 coin flip decides the winner** independent of team strength, followed by exactly one scored overtime goal with eligible assists. The losing regular-season team earns one standings point.
 - Players' ratings improve scoring *odds*, but goals are not guaranteed and 4-, 5-, 6-goal games remain possible.
 - A base +8 player with a temporary effective rating of +9 displays **silver +8**; effective +10 displays **gold +8**. Their base +8 rating never changes.
+
+## Commissioner Mode (manual transactions)
+
+- Open **Commissioner Mode** in the sidebar to see all 16 teams, current named-player rosters, and combined base + totals.
+- **Move player:** send one active player to another team with an open roster slot. A full destination roster is rejected instead of silently releasing someone.
+- **Trade players:** swap one active player from each of two different teams, including when both rosters are full. Each team still has at most three named players.
+- **Release / Cut player:** manually remove an active player and mark their permanent record **Cut**. A confirmation appears before committing a cut.
+- These actions are **offseason only**, outside active regular seasons, playoffs, draft lotteries and generation screens. This preserves saved game scores, current-year roster snapshots and lottery/generation results.
+- All successful transactions are saved to the existing league's local database and backup JSON, with a league-wide transaction log and an individual player **Team & Transaction History** section. Historic scoring, player IDs, draft origins and former teams remain intact; a traded player plays for their new team in the following season.
+- This feature is commissioner-controlled only: there is no AI trading or trading of future player-generation rights yet.
 
 ## Regular-season pace and scoring leaderboards
 
@@ -51,6 +61,7 @@ An ordinary new league uses the V1.4 database (`IceNumbersV14`), separate from p
 - `js/draft.js` — equal-odds lottery, scouting and hidden ratings, three draft picks, animated UI, and automatic picks
 - `js/generation.js` — post-draft ranking, random eligible team selection, highlighted cards, player reveals, automatic bulk-mode generation
 - `js/season-scoring.js` — live/historical regular-season and playoff player scoring leaderboards
+- `js/commissioner.js` — offseason trades, moves, cuts, persistent team transaction history and roster controls
 - `js/simulation.js` — resumable regular-season schedule, live standings, regulation, best-of-seven playoffs and franchise/player records
 - `js/season-actions.js` — resumable season saves and playoff controls
 - `js/views.js`, `js/v13.js` — existing team, player and championship interfaces

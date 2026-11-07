@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const files=['js/core.js','js/storage.js','js/scoring.js','js/draft.js','js/generation.js','js/simulation.js',
 'js/season-actions.js','js/views.js','js/v13.js','js/customization.js',
-'js/testing-view.js','js/scoring-estimator.js','js/season-scoring.js','js/app.js'];
+'js/testing-view.js','js/scoring-estimator.js','js/season-scoring.js','js/commissioner.js','js/app.js'];
 const sandbox=vm.createContext({console});
 for(const file of files){
  let source=readFileSync(file,'utf8');
@@ -93,6 +93,65 @@ for(const length of [30,45,60]){
 const resumed=parsed("(function(){state=initialState();beginSeason();const previous=state.activeSeason.gameCount;playNextGames();return {previous,now:state.activeSeason.gameCount}})()");
 assert.ok(resumed.now>resumed.previous);
 console.log('PASS: incremental playoff simulation');
+
+const commissioner=parsed(`(function(){
+ state=initialState();state.season=1;state.generatedForSeason=2;
+ const a=state.teams[0],b=state.teams[1];
+ const star=makeNewPlayer(0,'spawn',1,{name:'Original Star',bonus:8,year:2});
+ const other=makeNewPlayer(0,'spawn',1,{name:'Other Skater',bonus:2,year:4});
+ const partner=makeNewPlayer(1,'spawn',1,{name:'Trade Partner',bonus:3,year:3});
+ a.roster=[star,other];
+ b.roster=[partner,makeNewPlayer(1,'spawn',1,{bonus:4,year:1}),makeNewPlayer(1,'spawn',1,{bonus:1,year:5})];
+ let blockedFull=false;try{commissionerMove(0,star.id,1)}catch(e){blockedFull=true}
+ const noChange=star.teamId===0&&a.roster.length===2&&b.roster.length===3;
+ const trade=commissionerSwap(0,star.id,1,partner.id);
+ const traded={teamA:a.roster.map(p=>p.id),teamB:b.roster.map(p=>p.id),starTeam:star.teamId,partnerTeam:partner.teamId};
+ const cut=commissionerRelease(1,star.id);
+ const cutStatus=playerStatus(star),cutYear=star.cutSeason,cutRecord=cut.players[0].transactions.at(-1);
+ const moved=commissionerMove(0,partner.id,1);
+ const ledger=JSON.parse(JSON.stringify(state.transactions));
+ const fromPlayer=JSON.parse(JSON.stringify(partner.transactions));
+ let blockedDuringSeason=false;state.regularSeason={season:2};
+ try{commissionerRelease(0,other.id)}catch(e){blockedDuringSeason=true}
+ state.regularSeason=null;
+ let blockedDraft=false;state.draft={phase:'lottery'};
+ try{commissionerMove(1,partner.id,0)}catch(e){blockedDraft=true}
+ state.draft=null;
+ let blockedSameTeam=false;try{commissionerMove(1,partner.id,1)}catch(e){blockedSameTeam=true}
+ const snap=clone(state);state=clone(snap);
+ const future=simulateSeason();
+ const player=state.teams.flatMap(t=>t.roster).find(p=>p.id===partner.id);
+ return {blockedFull,noChange,traded,cutStatus,cutYear,cutRecord,ledger,fromPlayer,blockedDuringSeason,blockedDraft,blockedSameTeam,
+  rosterCounts:state.teams.map(t=>t.roster.length),season:state.season,
+  archivedTeam:future.result.rosters[1].some(p=>p.id===partner.id),
+  archivedOld:future.result.rosters[0].some(p=>p.id===partner.id),
+  futurePlayerHistory:player?.history?.filter(r=>r.season===2).map(r=>r.team)};
+})()`);
+assert.equal(commissioner.blockedFull,true,'moves cannot exceed 3 named players');
+assert.equal(commissioner.noChange,true,'failed transfer must not change either roster');
+assert.equal(commissioner.traded.starTeam,1);
+assert.equal(commissioner.traded.partnerTeam,0);
+assert.equal(commissioner.traded.teamA.length,2);
+assert.equal(commissioner.traded.teamB.length,3);
+assert.equal(commissioner.cutStatus,'Cut');
+assert.equal(commissioner.cutYear,2);
+assert.equal(commissioner.cutRecord.toTeamId,null);
+assert.equal(commissioner.ledger.length,3);
+assert.deepEqual(commissioner.ledger.map(tx=>tx.type),['trade','cut','move']);
+assert.equal(commissioner.fromPlayer.length,2);
+assert.equal(commissioner.fromPlayer[0].fromTeamId,1);
+assert.equal(commissioner.fromPlayer[0].toTeamId,0);
+assert.equal(commissioner.fromPlayer[1].toTeamId,1);
+assert.equal(commissioner.blockedDuringSeason,true);
+assert.equal(commissioner.blockedDraft,true);
+assert.equal(commissioner.blockedSameTeam,true);
+assert.ok(commissioner.rosterCounts.every(n=>n<=3));
+assert.equal(commissioner.season,2);
+assert.equal(commissioner.archivedTeam,true);
+assert.equal(commissioner.archivedOld,false);
+assert.ok(commissioner.futurePlayerHistory?.includes(1));
+console.log('PASS: commissioner trades, moves, cuts, three-player limits, locked season and historical team continuity');
+
 
 const liveRegular=parsed(`(function(){
  state=initialState();state.rngState=314159265;
@@ -307,4 +366,11 @@ assert.match(nodes.app.innerHTML,/Sim All/);
 assert.match(nodes.app.innerHTML,/draft-team-plus/);
 assert.equal(evaluate('TAB_NAMES.generation'),'Player Generation');
 console.log('PASS: Settings, Testing Information, old save isolation and silver/gold ratings');
+assert.equal(evaluate('TAB_NAMES.commissioner'),'Commissioner Mode');
+assert.ok(readFileSync('index.html','utf8').includes('js/commissioner.js'));
+evaluate("state=initialState();state.season=1;state.generatedForSeason=2;state.teams[0].roster=[makeNewPlayer(0,'spawn',2,{bonus:6,year:2})];commissionerView()");
+assert.match(nodes.app.innerHTML,/Manage rosters/);
+assert.match(nodes.app.innerHTML,/Trade players \(swap\)/);
+assert.match(nodes.app.innerHTML,/Transaction history/);
+console.log('PASS: commissioner navigation and form render');
 console.log('All V1.4 smoke tests passed.');

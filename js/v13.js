@@ -66,10 +66,32 @@ async function playerProfile(){
  if(view!=='playerDetail'||selectedPlayer!==id)return;
  const totalG=(p.regGoals||0)+(p.playoffGoals||0),totalA=(p.regAssists||0)+(p.playoffAssists||0);
  const status=playerStatus(p);
+ const transactions=(p.transactions||[]).slice().sort((a,b)=>a.id-b.id);
+ const teamPath=[];
+ if(transactions.length){
+  // Transactions are an explicit, ordered source of the club changes.
+  // Archived season rows continue to show the actual historic club each year.
+  if(transactions[0].fromTeamId!=null)teamPath.push(transactions[0].fromTeamId);
+  for(const tx of transactions)if(tx.toTeamId!=null&&teamPath.at(-1)!==tx.toTeamId)teamPath.push(tx.toTeamId);
+ }else{
+  for(const h of (p.history||[]).slice().sort((a,b)=>a.season-b.season))if(teamPath.at(-1)!==h.team)teamPath.push(h.team);
+ }
+ if(!teamPath.length)teamPath.push(p.teamId);
+ const automaticCut=p.cutSeason!=null&&!transactions.some(tx=>tx.type==='cut')?
+  '<p class="record">Season '+p.cutSeason+' · Cut from '+esc(state.teams[p.teamId]?.name||'Unknown')+' (offseason roster change)</p>':'';
+ const transactionPanel='<div class="panel"><h2>Team &amp; Transaction History</h2>'+
+  '<p class="sub tiny">Teams represented: '+teamPath.map(id=>esc(state.teams[id]?.name||'Unknown')).join(' → ')+'</p>'+
+  (transactions.length?transactions.map(tx=>{
+   const from=state.teams[tx.fromTeamId]?.name||'Unknown';
+   const to=tx.toTeamId==null?'Cut':state.teams[tx.toTeamId]?.name||'Unknown';
+   return '<p class="record">Season '+tx.season+' · '+(tx.type==='trade'?'Traded':tx.type==='cut'?'Cut':'Moved')+
+    ' · '+esc(from)+' → '+esc(to)+'</p>';
+  }).join(''):'<p class="sub tiny">No commissioner transactions recorded for this player.</p>')+
+  automaticCut+'</div>';
  const statCells=(r,stage)=>{const x=r[stage];return '<td>'+fmt(x.gp)+'</td><td>'+(r.complete?fmt(x.g):'—')+'</td><td>'+(r.complete?fmt(x.a):'—')+'</td><td>'+(r.complete?fmt(x.g+x.a):'—')+'</td>'};
  const rows=stats.map(r=>'<tr><td><button class="linkbtn" data-year="'+r.season+'">'+r.season+'</button></td><td>'+teamLink(r.teamId)+'</td><td>+'+r.rating+'</td>'+statCells(r,'regular')+statCells(r,'playoff')+'<td>'+(r.champion?'🏆':r.partial?'<span class="sub tiny">In progress</span>':'')+'</td></tr>');
  const cards=[['Regular GP',p.regGames],['Regular G',p.regGoals],['Regular A',p.regAssists],['Regular PTS',(p.regGoals||0)+(p.regAssists||0)],['Playoff GP',p.playoffGames],['Playoff G',p.playoffGoals],['Playoff A',p.playoffAssists],['Playoff PTS',(p.playoffGoals||0)+(p.playoffAssists||0)],['Career PTS',totalG+totalA],['Championships',p.titles]].map(([k,v])=>'<div class="stat"><span class="sub tiny">'+k+'</span><div class="big mono">'+fmt(v)+'</div></div>').join('');
- $('app').innerHTML='<div class="buttonrow" style="margin:0 0 16px"><button data-nav="players">← Back to Player History</button></div><div class="panel"><div class="stickybar"><div><h2 style="margin:0">'+esc(p.name)+'</h2><p class="sub">Current/final rating '+ratingHtml(p)+' · '+status+' · '+(p.origin==='draft'?'Drafted':'Generated')+' · Joined Season '+p.joinSeason+'</p></div><div>'+teamLink(p.teamId)+'</div></div></div><div class="career-cards">'+cards+'</div><div class="panel"><h2>Season-by-Season Career</h2><p class="sub tiny" style="margin-bottom:12px">Each season shows the team, rating, regular-season scoring and playoff scoring. A player’s statistics follow them across teams.</p>'+ (rows.length?table(['Season','Team','Rating','GP','G','A','PTS','PO GP','PO G','PO A','PO PTS','Champion'],rows):'<p class="empty">No completed season yet.</p>')+(stats.some(r=>!r.complete)?'<p class="sub tiny">Some older games have no individual scoring records; unavailable totals are shown as a dash.</p>':'')+'</div>';
+ $('app').innerHTML='<div class="buttonrow" style="margin:0 0 16px"><button data-nav="players">← Back to Player History</button></div><div class="panel"><div class="stickybar"><div><h2 style="margin:0">'+esc(p.name)+'</h2><p class="sub">Current/final rating '+ratingHtml(p)+' · '+status+' · '+(p.origin==='draft'?'Drafted':'Generated')+' · Joined Season '+p.joinSeason+'</p></div><div>'+teamLink(p.teamId)+'</div></div></div><div class="career-cards">'+cards+'</div><div class="panel"><h2>Season-by-Season Career</h2><p class="sub tiny" style="margin-bottom:12px">Each season shows the team, rating, regular-season scoring and playoff scoring. A player’s statistics follow them across teams.</p>'+ (rows.length?table(['Season','Team','Rating','GP','G','A','PTS','PO GP','PO G','PO A','PO PTS','Champion'],rows):'<p class="empty">No completed season yet.</p>')+(stats.some(r=>!r.complete)?'<p class="sub tiny">Some older games have no individual scoring records; unavailable totals are shown as a dash.</p>':'')+'</div>'+transactionPanel;
 }
 function oddsTotal(weights){return weights.reduce((sum,n)=>sum+Number(n||0),0)}
 function oddsStatusHtml(key,weights){
