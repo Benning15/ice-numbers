@@ -120,7 +120,9 @@ async function boot(){
  }
  if(e.target.id==='season-select'){selectedSeason=Number(e.target.value);render()}
  if(e.target.id==='team-select'){selectedTeam=Number(e.target.value);render()}
- if(e.target.id==='team-game-season'){teamGamesYear=Number(e.target.value);renderTeamGameResults();return}
+ if(e.target.id==='team-game-season'||e.target.id==='team-player-season'){
+  teamGamesYear=Number(e.target.value);renderTeamGameResults();renderTeamSeasonPlayerStats();return
+ }
  if(e.target.id?.startsWith('commissioner-')){commissionerUpdateForm(e.target.id.slice('commissioner-'.length),e.target.value);return}
  if(e.target.id==='scoring-stage-select'){seasonScoringStage=e.target.value==='playoff'?'playoff':'regular';render();return}
  if(e.target.id==='scoring-season-select'){seasonScoringYear=Number(e.target.value);render();return}
