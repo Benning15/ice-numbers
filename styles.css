@@ -213,3 +213,8 @@
 .team-alltime-scroll table{width:100%}
 .team-alltime-scroll thead th{position:sticky;top:0;z-index:1}
 .team-alltime-scroll td:nth-child(7){font-weight:800}
+
+/* V1.9.6: next draft / generation opportunity ownership */
+.future-rights-outstanding{margin-top:18px;border-top:1px solid #354c62;padding-top:14px}
+.future-rights-outstanding summary{font-weight:700;cursor:pointer}
+.future-rights-outstanding .tablewrap{margin-top:12px;max-height:280px;overflow:auto}
