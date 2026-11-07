@@ -51,3 +51,37 @@ function replaceLeagueAtomically(backup,nextState){
   }
  });
 }
+
+/**
+ * Stream a team's head-to-head scores without allocating every archived goal
+ * event in a giant array. Useful for multi-thousand-season histories.
+ */
+function getTeamHeadToHeadSummary(teamId){
+ return new Promise((resolve,reject)=>{
+  const opponent=state.teams.filter(t=>t.id!==teamId)
+   .map(t=>({id:t.id,w:0,l:0,otl:0,coinW:0,coinL:0}));
+  const byId=new Map(opponent.map(row=>[row.id,row]));
+  let tx,request;
+  try{
+   tx=db.transaction('games','readonly');
+   request=tx.objectStore('games').index('byTeam').openCursor(teamId);
+   request.onsuccess=()=>{
+    const cursor=request.result;
+    if(!cursor){resolve(opponent);return}
+    const g=cursor.value;
+    if(g.stage==='regular'){
+     const other=g.aId===teamId?g.bId:g.aId,row=byId.get(other);
+     if(row){
+      if(g.winnerId===teamId)row.w++;
+      else if(g.coin)row.otl++;
+      else row.l++;
+      if(g.coin)g.winnerId===teamId?row.coinW++:row.coinL++;
+     }
+    }
+    cursor.continue();
+   };
+   request.onerror=()=>reject(request.error||new Error('Failed to read head-to-head records.'));
+   tx.onabort=()=>reject(tx.error||new Error('Head-to-head query was cancelled.'));
+  }catch(err){reject(err)}
+ });
+}
