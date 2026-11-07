@@ -202,3 +202,14 @@
 .team-player-stage h3{margin:0 0 5px}
 .team-player-stage .tablewrap{margin-top:8px}
 .team-player-history .tablewrap td:nth-last-child(2){font-weight:750}
+
+
+/* V1.9.4 — Full franchise scoring history (lazy-loaded on expansion). */
+.team-alltime-history>summary{cursor:pointer;font-weight:750}
+.team-alltime-history #team-alltime{margin-top:14px}
+.team-alltime-history .team-game-picker{margin-bottom:12px}
+.team-alltime-scroll{max-height:540px;overflow:auto;overscroll-behavior:contain;border-radius:8px}
+.team-alltime-scroll .tablewrap{margin:0}
+.team-alltime-scroll table{width:100%}
+.team-alltime-scroll thead th{position:sticky;top:0;z-index:1}
+.team-alltime-scroll td:nth-child(7){font-weight:800}

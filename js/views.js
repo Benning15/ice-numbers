@@ -193,12 +193,90 @@ function renderTeamSeasonPlayerStats(){
   '. Goals, assists and points are for this season only, not career totals.</p>'+
   section('regular','Regular Season')+section('playoff','Playoffs');
 }
-function teamDetail(){if(teamGamesTeam!==selectedTeam){teamGamesTeam=selectedTeam;teamGamesYear=null;teamGamesCache=null;}let t=state.teams[selectedTeam];titlebar(t.name,'Roster and franchise history — names and logos can be changed in Team Customization');$('app').innerHTML=`<div class="buttonrow" style="margin:0 0 15px"><select id="team-select" class="select">${state.teams.map(x=>`<option value="${x.id}" ${x.id===t.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div><div class="cards"><div class="stat"><span class="sub tiny">All-time W–L–OTL</span><div class="big">${fmt(t.regW)}–${fmt(t.regL)}–${fmt(t.regOTL||0)}</div></div><div class="stat"><span class="sub tiny">Championships</span><div class="big">${fmt(t.titles)}</div></div><div class="stat"><span class="sub tiny">Playoff appearances</span><div class="big">${fmt(t.playoffApps)}</div></div><div class="stat"><span class="sub tiny">Longest drought</span><div class="big">${fmt(t.longestTitleDrought)}</div></div></div><div class="split"><div class="panel"><h2>Active roster (${t.roster.length}/${state.settings.maxRoster})</h2>${t.roster.length?table(['Player','Rating','Year','Origin'],t.roster.map(p=>`<tr><td>${playerLink(p)}</td><td>+${p.bonus}</td><td>${p.year}/${state.settings.careerLength}</td><td>${p.origin}</td></tr>`)):'<p class="empty">No active players</p>'}<p class="sub tiny">Combined team rating: +${bonusOf(t)} (uncapped)</p></div><div class="panel"><h2>Franchise streaks</h2>${[['Current playoff streak',t.currentPlayoffStreak],['Longest playoff streak',t.bestPlayoffStreak],['Current missed-playoff streak',t.currentMissStreak],['Longest missed-playoff streak',t.bestMissStreak],['Longest championship streak',t.bestTitleStreak],['Current title drought',t.titleDrought],['Most consecutive last places',t.bestFirstStreak],['Longest regular-season win streak',t.bestRegWinStreak],['Longest regular-season loss streak',t.bestRegLossStreak]].map(([k,v])=>`<p class="record">${k}: <b class="mono">${fmt(v)}</b></p>`).join('')}</div></div><div class="panel"><details class="team-history-section" open><summary>Season-by-season franchise history</summary><div id="team-seasons" class="sub">Loading archive…</div></details></div><div class="panel"><details class="team-game-history"><summary>Game Results — By Season</summary><div id="team-games" class="sub">Loading game results…</div></details></div><div class="panel"><details class="team-player-history"><summary>Player Stats — By Season</summary><div id="team-player-stats" class="sub">Loading player stats…</div></details></div><div class="panel"><h2>Head-to-head records (regular season)</h2><div id="team-h2h" class="sub">Loading individual game results…</div></div>`;loadTeamRecords(t.id)}
+// Aggregate named-player scoring earned for one franchise, using each year's
+// actual season roster. Player ID is the key so trades never transfer a player's
+// totals from another team, and retired / cut players remain on the leaderboard.
+let teamAllTimeMode='combined';
+function franchiseAllTimeScorers(teamId,seasons,games){
+ const byId=new Map(),rosters=new Map();
+ for(const season of seasons){
+  if(!Number.isInteger(season.season))continue;
+  const roster=season.rosters?.[teamId];
+  if(!Array.isArray(roster))continue;
+  const ids=new Set();
+  for(const p of roster){
+   if(!Number.isInteger(p.id)||ids.has(p.id))continue;
+   ids.add(p.id);
+   if(!byId.has(p.id))byId.set(p.id,{id:p.id,name:p.name||'Player '+p.id,seasons:0,
+    regular:{gp:0,g:0,a:0,incomplete:false},playoff:{gp:0,g:0,a:0,incomplete:false}});
+   const player=byId.get(p.id);player.name=p.name||player.name;player.seasons++;
+  }
+  rosters.set(season.season,ids);
+ }
+ for(const game of games){
+  if(game.aId!==teamId&&game.bId!==teamId)continue;
+  if(game.stage!=='regular'&&game.stage!=='playoff')continue;
+  const ids=rosters.get(game.season);
+  if(!ids)continue;
+  for(const id of ids)byId.get(id)[game.stage].gp++;
+  if(!Array.isArray(game.goalEvents)){
+   for(const id of ids)byId.get(id)[game.stage].incomplete=true;
+   continue;
+  }
+  for(const goal of game.goalEvents){
+   // Scoring can only be credited to the team for which it happened.
+   // Where old archives omitted teamId, a matching roster player ID is
+   // the fallback; do not import points earned for other franchises.
+   if(goal.teamId!=null&&goal.teamId!==teamId)continue;
+   if(ids.has(goal.scorerId))byId.get(goal.scorerId)[game.stage].g++;
+   for(const assistId of goal.assistIds||[])if(ids.has(assistId))byId.get(assistId)[game.stage].a++;
+  }
+ }
+ return [...byId.values()];
+}
+function franchiseAllTimeStage(player,mode){
+ const r=player.regular,p=player.playoff;
+ const gp=mode==='combined'?r.gp+p.gp:player[mode].gp;
+ const g=mode==='combined'?r.g+p.g:player[mode].g;
+ const a=mode==='combined'?r.a+p.a:player[mode].a;
+ const incomplete=mode==='combined'?r.incomplete||p.incomplete:player[mode].incomplete;
+ return {gp,g,a,points:g+a,incomplete,ppg:gp?(g+a)/gp:0};
+}
+function renderTeamAllTimeScorers(){
+ const el=$('team-alltime');
+ if(!el||!teamGamesCache||teamGamesCache.id!==selectedTeam)return;
+ const {games,seasons=[]}=teamGamesCache;
+ if(!teamGamesCache.franchiseScorers)teamGamesCache.franchiseScorers=franchiseAllTimeScorers(selectedTeam,seasons,games);
+ const players=teamGamesCache.franchiseScorers;
+ const mode=['combined','regular','playoff'].includes(teamAllTimeMode)?teamAllTimeMode:'combined';
+ const ranked=players.map(p=>({...p,stats:franchiseAllTimeStage(p,mode)}))
+  .sort((a,b)=>Number(a.stats.incomplete)-Number(b.stats.incomplete)||
+   b.stats.points-a.stats.points||b.stats.g-a.stats.g||b.stats.ppg-a.stats.ppg||a.name.localeCompare(b.name)||a.id-b.id);
+ const modes=[['combined','Regular + Playoffs'],['regular','Regular Season'],['playoff','Playoffs']];
+ const select='<div class="team-game-picker"><label for="team-alltime-mode" class="sub tiny">Scoring</label>'+
+  '<select id="team-alltime-mode" class="select">'+modes.map(([val,label])=>
+   '<option value="'+val+'" '+(mode===val?'selected':'')+'>'+label+'</option>').join('')+'</select></div>';
+ const rows=ranked.map((p,i)=>{
+  const st=p.stats,missing=st.incomplete;
+  return '<tr><td>'+fmt(i+1)+'</td><td>'+playerLink(p)+'</td><td>'+fmt(p.seasons)+'</td>'+
+   '<td>'+fmt(st.gp)+'</td><td>'+(missing?'—':fmt(st.g))+'</td><td>'+(missing?'—':fmt(st.a))+'</td>'+
+   '<td><b>'+(missing?'—':fmt(st.points))+'</b></td>'+
+   '<td>'+(missing?'—':st.ppg.toFixed(2))+'</td></tr>';
+ });
+ el.innerHTML=select+
+  '<p class="sub tiny">'+fmt(players.length)+' named players in franchise history. Includes active, retired, cut, and traded players. Each point counts only for '+
+  esc(state.teams[selectedTeam].name)+'.</p>'+
+  (rows.length?'<div class="team-alltime-scroll">'+
+   table(['#','Player','Seasons','GP','G','A','PTS','P/GP'],rows)+'</div>':
+   '<p class="empty">No historical named players yet. Simulate a season to begin the scoring records.</p>')+
+  (ranked.some(p=>p.stats.incomplete)?'<p class="sub tiny">Some older games do not have individual scoring details; those players appear at the bottom with unknown totals (—).</p>':'');
+}
+function teamDetail(){if(teamGamesTeam!==selectedTeam){teamGamesTeam=selectedTeam;teamGamesYear=null;teamGamesCache=null;}let t=state.teams[selectedTeam];titlebar(t.name,'Roster and franchise history — names and logos can be changed in Team Customization');$('app').innerHTML=`<div class="buttonrow" style="margin:0 0 15px"><select id="team-select" class="select">${state.teams.map(x=>`<option value="${x.id}" ${x.id===t.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div><div class="cards"><div class="stat"><span class="sub tiny">All-time W–L–OTL</span><div class="big">${fmt(t.regW)}–${fmt(t.regL)}–${fmt(t.regOTL||0)}</div></div><div class="stat"><span class="sub tiny">Championships</span><div class="big">${fmt(t.titles)}</div></div><div class="stat"><span class="sub tiny">Playoff appearances</span><div class="big">${fmt(t.playoffApps)}</div></div><div class="stat"><span class="sub tiny">Longest drought</span><div class="big">${fmt(t.longestTitleDrought)}</div></div></div><div class="split"><div class="panel"><h2>Active roster (${t.roster.length}/${state.settings.maxRoster})</h2>${t.roster.length?table(['Player','Rating','Year','Origin'],t.roster.map(p=>`<tr><td>${playerLink(p)}</td><td>+${p.bonus}</td><td>${p.year}/${state.settings.careerLength}</td><td>${p.origin}</td></tr>`)):'<p class="empty">No active players</p>'}<p class="sub tiny">Combined team rating: +${bonusOf(t)} (uncapped)</p></div><div class="panel"><h2>Franchise streaks</h2>${[['Current playoff streak',t.currentPlayoffStreak],['Longest playoff streak',t.bestPlayoffStreak],['Current missed-playoff streak',t.currentMissStreak],['Longest missed-playoff streak',t.bestMissStreak],['Longest championship streak',t.bestTitleStreak],['Current title drought',t.titleDrought],['Most consecutive last places',t.bestFirstStreak],['Longest regular-season win streak',t.bestRegWinStreak],['Longest regular-season loss streak',t.bestRegLossStreak]].map(([k,v])=>`<p class="record">${k}: <b class="mono">${fmt(v)}</b></p>`).join('')}</div></div><div class="panel"><details class="team-history-section" open><summary>Season-by-season franchise history</summary><div id="team-seasons" class="sub">Loading archive…</div></details></div><div class="panel"><details class="team-game-history"><summary>Game Results — By Season</summary><div id="team-games" class="sub">Loading game results…</div></details></div><div class="panel"><details class="team-player-history"><summary>Player Stats — By Season</summary><div id="team-player-stats" class="sub">Loading player stats…</div></details></div><div class="panel"><details id="team-alltime-details" class="team-alltime-history"><summary id="team-alltime-summary">All-Time Team Scoring Leaders</summary><div id="team-alltime" class="sub">Expand to view the franchise scoring leaders.</div></details></div><div class="panel"><h2>Head-to-head records (regular season)</h2><div id="team-h2h" class="sub">Loading individual game results…</div></div>`;loadTeamRecords(t.id)}
 async function loadTeamRecords(id){let seasons=await getAll('seasons');if(view!=='teams'||selectedTeam!==id)return;let records=seasons.map(s=>{let r=s.standings.find(x=>x.id===id);return {season:s.season,seed:r.seed,w:r.w,l:r.l,otl:r.otl||0,points:r.points,bonus:r.bonus,playoffs:r.seed<=8,champ:s.championId===id}}).reverse();$('team-seasons').innerHTML=records.length?`<p class="sub tiny" style="margin:10px 0 8px">${fmt(records.length)} archived season${records.length===1?'':'s'}${records.length>10?' · scroll to see earlier seasons':''}</p><div class="team-season-scroll">${table(['Year','Finish','W','L','OTL','PTS','Roster +','Playoffs','Title'],records.map(r=>`<tr><td><button class="linkbtn" data-year="${r.season}">${r.season}</button></td><td>${r.seed}</td><td>${r.w}</td><td>${r.l}</td><td>${r.otl}</td><td>${r.points}</td><td>+${r.bonus}</td><td>${r.playoffs?'Yes':'No'}</td><td>${r.champ?'🏆':''}</td></tr>`))}</div>`:'No history yet.';
 let games=await getIndexAll('games','byTeam',id);if(view!=='teams'||selectedTeam!==id)return;
 const current=state.regularSeason||state.activeSeason;
 const years=[...new Set([...seasons.map(s=>s.season),...(current?[current.season]:[]),...games.map(g=>g.season)])].sort((a,b)=>b-a);
-teamGamesCache={id,years,games,seasons:[...seasons,...(current?[current]:[])]};renderTeamGameResults();renderTeamSeasonPlayerStats();
+teamGamesCache={id,years,games,seasons:[...seasons,...(current?[current]:[])]};renderTeamGameResults();renderTeamSeasonPlayerStats();if($('team-alltime-details')?.open)renderTeamAllTimeScorers();
 let vs=state.teams.filter(t=>t.id!==id).map(t=>({id:t.id,w:0,l:0,otl:0,coinW:0,coinL:0}));let map=Object.fromEntries(vs.map(x=>[x.id,x]));for(let g of games){if(g.stage!=='regular')continue;let opp=g.aId===id?g.bId:g.aId,item=map[opp];if(!item)continue;if(g.winnerId===id)item.w++;else if(g.coin)item.otl++;else item.l++;if(g.coin){g.winnerId===id?item.coinW++:item.coinL++}}$('team-h2h').innerHTML=table(['Opponent','W','L','OTL','Win %','Coin W-L'],vs.sort((a,b)=>b.w-a.w).map(r=>`<tr><td>${teamLink(r.id)}</td><td>${r.w}</td><td>${r.l}</td><td>${r.otl}</td><td>${pct(r.w,r.w+r.l+r.otl)}</td><td>${r.coinW}-${r.coinL}</td></tr>`))}
 function teams(){teamDetail()}
 let playerSortDescending=true;
