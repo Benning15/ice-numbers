@@ -193,3 +193,12 @@
 .team-game-scoring{padding:8px 0;min-width:170px}
 .team-game-scoring .record{font-size:12px;margin:4px 0}
 .team-game-history .tablewrap{margin-top:12px}
+
+
+/* V1.9.3 — Season-specific named-player scoring on each team page. */
+.team-player-history>summary{cursor:pointer;font-weight:750}
+.team-player-history #team-player-stats{margin-top:14px}
+.team-player-stage{margin:18px 0}
+.team-player-stage h3{margin:0 0 5px}
+.team-player-stage .tablewrap{margin-top:8px}
+.team-player-history .tablewrap td:nth-last-child(2){font-weight:750}
