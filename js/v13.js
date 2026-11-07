@@ -77,6 +77,8 @@ async function playerProfile(){
   for(const h of (p.history||[]).slice().sort((a,b)=>a.season-b.season))if(teamPath.at(-1)!==h.team)teamPath.push(h.team);
  }
  if(!teamPath.length)teamPath.push(p.teamId);
+ const automaticCut=p.cutSeason!=null&&!transactions.some(tx=>tx.type==='cut')?
+  '<p class="record">Season '+p.cutSeason+' · Cut from '+esc(state.teams[p.teamId]?.name||'Unknown')+' (offseason roster change)</p>':'';
  const transactionPanel='<div class="panel"><h2>Team &amp; Transaction History</h2>'+
   '<p class="sub tiny">Teams represented: '+teamPath.map(id=>esc(state.teams[id]?.name||'Unknown')).join(' → ')+'</p>'+
   (transactions.length?transactions.map(tx=>{
@@ -84,7 +86,8 @@ async function playerProfile(){
    const to=tx.toTeamId==null?'Cut':state.teams[tx.toTeamId]?.name||'Unknown';
    return '<p class="record">Season '+tx.season+' · '+(tx.type==='trade'?'Traded':tx.type==='cut'?'Cut':'Moved')+
     ' · '+esc(from)+' → '+esc(to)+'</p>';
-  }).join(''):'<p class="sub tiny">No commissioner transactions recorded for this player.</p>')+'</div>';
+  }).join(''):'<p class="sub tiny">No commissioner transactions recorded for this player.</p>')+
+  automaticCut+'</div>';
  const statCells=(r,stage)=>{const x=r[stage];return '<td>'+fmt(x.gp)+'</td><td>'+(r.complete?fmt(x.g):'—')+'</td><td>'+(r.complete?fmt(x.a):'—')+'</td><td>'+(r.complete?fmt(x.g+x.a):'—')+'</td>'};
  const rows=stats.map(r=>'<tr><td><button class="linkbtn" data-year="'+r.season+'">'+r.season+'</button></td><td>'+teamLink(r.teamId)+'</td><td>+'+r.rating+'</td>'+statCells(r,'regular')+statCells(r,'playoff')+'<td>'+(r.champion?'🏆':r.partial?'<span class="sub tiny">In progress</span>':'')+'</td></tr>');
  const cards=[['Regular GP',p.regGames],['Regular G',p.regGoals],['Regular A',p.regAssists],['Regular PTS',(p.regGoals||0)+(p.regAssists||0)],['Playoff GP',p.playoffGames],['Playoff G',p.playoffGoals],['Playoff A',p.playoffAssists],['Playoff PTS',(p.playoffGoals||0)+(p.playoffAssists||0)],['Career PTS',totalG+totalA],['Championships',p.titles]].map(([k,v])=>'<div class="stat"><span class="sub tiny">'+k+'</span><div class="big mono">'+fmt(v)+'</div></div>').join('');
