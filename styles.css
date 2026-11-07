@@ -151,3 +151,12 @@
 .draft-current-pick .draft-team-delta{margin-left:auto;font-size:17px}
 .draft-reveal-card .draft-team-delta{margin-top:8px;padding-top:10px;border-top:1px solid #42696a}
 @media(max-width:650px){.draft-team-card{padding:10px 9px}.draft-team-plus{font-size:17px}.draft-current-pick{flex-wrap:wrap}.draft-current-pick .draft-team-delta{width:100%;margin-left:0}}
+
+
+/* V1.8 — Live regular-season progress and per-season scoring. */
+.regular-game-controls{margin:12px 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.regular-game-controls button{min-height:39px}
+.season-scoring-filters{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}
+.season-scoring-filters>div{display:flex;flex-direction:column;gap:6px;min-width:190px;flex:1}
+.season-scoring-filters .select{max-width:100%;width:100%}
+@media(max-width:650px){.regular-game-controls button{flex:1 1 130px}.season-scoring-filters>div{min-width:145px}}
