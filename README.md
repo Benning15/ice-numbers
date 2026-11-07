@@ -1,4 +1,4 @@
-# Ice Numbers — V1.9.3 (team season player stats)
+# Ice Numbers — V1.9.4 (franchise all-time scoring leaders)
 
 A browser-based, 16-team hockey league simulator focused on unpredictable results, rare superstars, long-term league history, dynasties and droughts.
 
@@ -14,6 +14,14 @@ A browser-based, 16-team hockey league simulator focused on unpredictable result
 - If regulation ends tied, **an even 50/50 coin flip decides the winner** independent of team strength, followed by exactly one scored overtime goal with eligible assists. The losing regular-season team earns one standings point.
 - Players' ratings improve scoring *odds*, but goals are not guaranteed and 4-, 5-, 6-goal games remain possible.
 - A base +8 player with a temporary effective rating of +9 displays **silver +8**; effective +10 displays **gold +8**. Their base +8 rating never changes.
+
+## Franchise all-time scoring leaders
+
+- Expand **All-Time Team Scoring Leaders** in Team Records to browse every named player who has represented that franchise, including retired, cut and traded players. The full ranking is scrollable, not limited to the top 100.
+- Switch the dropdown between **Regular + Playoffs** (combined), **Regular Season**, and **Playoffs**. Rankings sort by franchise points then goals, and display seasons represented, GP, goals, assists, points and P/GP; click players to see their complete career profiles.
+- Each player's scoring is attributed only to games played with the **selected team**. Points from a later trade to another club never increase the original franchise's record. Data is calculated from saved season-opening lineups and per-game goal/assist events, and includes the currently active season.
+- Older games missing complete scoring plays show unknown totals as **—** and are listed beneath fully verifiable franchise scoring records.
+- This is a read-only historical view; it does not change saved league data or player career totals. Historical league saves remain compatible.
 
 ## Team season player statistics
 
