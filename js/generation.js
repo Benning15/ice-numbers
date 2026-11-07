@@ -48,7 +48,8 @@ function generateOffseasonPlayers(){
  const updated=[];
  g.results=[];
  state.upcomingDraftNotes??=[];
- for(const teamId of g.selected){
+ for(const originTeamId of g.selected){
+  const teamId=futureRightOwner('generation',originTeamId);
   const t=state.teams[teamId];
   if(!t)throw Error('Unknown team selected for generation.');
   const before=bonusOf(t),p=makeNewPlayer(teamId,'spawn',g.year);
@@ -72,7 +73,9 @@ function generateOffseasonPlayers(){
   // Even a rejected generated prospect is saved in Player History as Cut.
   updated.push(p);
   const after=bonusOf(t);
-  g.results.push({teamId,playerId:p.id,name:p.name,bonus:p.bonus,year:p.year,before,after,kept,cut});
+  g.results.push({originTeamId,teamId,playerId:p.id,name:p.name,bonus:p.bonus,year:p.year,before,after,kept,cut});
+  futureRightRedeem('generation',originTeamId,g.year);
+  if(originTeamId!==teamId)state.upcomingDraftNotes.push(state.teams[originTeamId].name+' transferred their generation opportunity to '+t.name);
   state.upcomingDraftNotes.push(t.name+' generated '+p.name+' (+'+p.bonus+', Year '+p.year+')'+(kept?'':' — CUT'));
   if(cut&&!cut.newPlayer)state.upcomingDraftNotes.push(t.name+' cut '+cut.name+' (+'+cut.bonus+', Year '+cut.year+')');
  }
@@ -103,7 +106,7 @@ function generationTeamTile(row,selected,showPicked){
   '" style="--generation-order:'+(showPicked&&isPicked?selected.indexOf(id):0)+'">'+
   '<span class="generation-team-main">'+teamMark(id)+'<b>'+esc(team.name)+'</b></span>'+
   '<span class="generation-team-total">+'+row.base+'</span>'+
-  (showPicked&&isPicked?'<span class="generation-team-status">SELECTED</span>':'')+
+  (showPicked&&isPicked?'<span class="generation-team-status">SELECTED'+(futureRightOwner('generation',id)!==id?' → '+esc(state.teams[futureRightOwner('generation',id)].name):'')+'</span>':'')+
   '</div>';
 }
 function generationView(){
@@ -125,13 +128,13 @@ function generationView(){
  }
  const selectedRows=(g.selected||[]).map(id=>g.ranked.find(r=>r.teamId===id));
  if(g.phase==='teams'){
-  $('app').innerHTML=summary+'<div class="panel"><h2>'+count+' Teams Selected</h2><p class="sub tiny">Each team generates one player. A full roster keeps its best three, using base + and career year only. Current team + shown below.</p><div class="generation-team-grid">'+selectedRows.map(r=>generationTeamTile(r,g.selected,true)).join('')+'</div><div class="buttonrow"><button class="primary" data-generation-action="generate">Generate '+count+' Players</button></div></div>';
+  $('app').innerHTML=summary+'<div class="panel"><h2>'+count+' Teams Selected</h2><p class="sub tiny">Each original team provides one opportunity. If it was traded, the new owner receives the player. Full rosters keep their best three by base + and career year.</p><div class="generation-team-grid">'+selectedRows.map(r=>generationTeamTile(r,g.selected,true)).join('')+'</div><div class="buttonrow"><button class="primary" data-generation-action="generate">Generate '+count+' Players</button></div></div>';
   return;
  }
  if(g.phase==='results'){
   const rows=(g.results||[]).map((r,i)=>{
    const cut=r.cut?'<div class="generation-cut">CUT: '+esc(r.cut.name)+' (+'+r.cut.bonus+', Year '+r.cut.year+')</div>':'';
-   return '<div class="generation-result" style="--generation-order:'+i+'"><div class="generation-result-team">'+teamMark(r.teamId)+'<b>'+esc(state.teams[r.teamId].name)+'</b></div><div class="generation-result-player"><b>'+esc(r.name)+'</b><span class="sub tiny">+'+r.bonus+' · Career Year '+r.year+'</span>'+cut+'</div><div class="generation-result-plus"><span class="sub tiny">TEAM +</span><strong>+'+r.before+' → +'+r.after+'</strong></div></div>';
+   return '<div class="generation-result" style="--generation-order:'+i+'"><div class="generation-result-team">'+teamMark(r.teamId)+'<b>'+esc(state.teams[r.teamId].name)+'</b>'+(r.originTeamId!==undefined&&r.originTeamId!==r.teamId?'<span class="sub tiny">From '+esc(state.teams[r.originTeamId].name)+'</span>':'')+'</div><div class="generation-result-player"><b>'+esc(r.name)+'</b><span class="sub tiny">+'+r.bonus+' · Career Year '+r.year+'</span>'+cut+'</div><div class="generation-result-plus"><span class="sub tiny">TEAM +</span><strong>+'+r.before+' → +'+r.after+'</strong></div></div>';
   }).join('');
   $('app').innerHTML=summary+'<div class="panel"><h2>Generated Players · Season '+g.year+'</h2><div class="generation-results">'+(rows||'<p class="sub">No teams were selected. No players generated.</p>')+'</div><div class="buttonrow"><button class="primary" data-generation-action="finish">Continue to Season '+g.year+'</button></div></div>';
  }
