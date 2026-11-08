@@ -21,7 +21,7 @@ function effectiveRating(p){return Math.max(0,Math.min(10,p.bonus+(Number(p.moti
 function newPlayer(teamId,origin,season,overrides=null){
  const s=state.settings,[lo,hi]=motivationRange(),span=Number(s.tendencySpread??0);
  const bonus=overrides?.bonus??weighted(origin==='draft'?s.draftWeights:s.normalWeights);
- const p={id:state.nextPlayerId++,teamId,name:overrides?.name??(FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)]),bonus,
+ const p={id:state.nextPlayerId++,teamId,name:overrides?.name??(randomFirstName()+' '+randomLastName()),bonus,
   startingYear:overrides?.year??(origin==='draft'?1:randint(1,s.careerLength)),year:0,origin,joinSeason:season,retireSeason:null,
   motivationMin:lo,motivationMax:hi,motivation:0,motivationSeason:null,
   goalTendency:randint(50-span,50+span),
