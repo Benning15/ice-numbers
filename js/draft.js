@@ -34,7 +34,7 @@ function revealDraftProspects(){
  if(!d||!d.lottery||d.prospects||(d.lotteryRevealed??d.lottery.length)!==d.lottery.length)throw Error('Reveal all three lottery picks before showing prospects.');
  const mystery=randint(0,3);
  d.prospects=Array.from({length:4},(_,i)=>{
-  const bonus=weighted(state.settings.draftWeights),year=randint(1,Math.min(3,state.settings.careerLength));
+  const bonus=weighted(state.settings.draftWeights),year=1;
   const [rangeMin,rangeMax]=prospectRange(bonus);
   return {index:i,name:FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)],
    bonus,year,rangeMin,rangeMax,mystery:i===mystery};
@@ -47,7 +47,7 @@ function applyDraftPick(index){
  const prospect=d.prospects.find(p=>p.index===index);
  if(!prospect||d.picks.some(p=>p.prospectIndex===index))throw Error('That prospect is no longer available.');
  const originTeamId=d.lottery[d.picks.length],teamId=futureRightOwner('draft',originTeamId),team=state.teams[teamId],changed=new Map(),before=bonusOf(team);
- const p=makeNewPlayer(teamId,'draft',state.season+1,{bonus:prospect.bonus,name:prospect.name,year:prospect.year});
+ const p=makeNewPlayer(teamId,'draft',state.season+1,{bonus:prospect.bonus,name:prospect.name,year:1});
  let released=null;
  if(team.roster.length>=state.settings.maxRoster){
   released=team.roster.reduce((a,b)=>a.bonus<b.bonus||a.bonus===b.bonus&&a.year>=b.year?a:b);
@@ -86,14 +86,13 @@ function autoDraftChoice(d){
  const weights=state.settings.draftWeights;
  let best=null,bestScore=-Infinity;
  for(const p of candidates){
-  // Draft AI sees only public range and year. Never read the true hidden
-  // rating/year while evaluating prospects, even for the mystery candidate.
+  // Draft AI uses only the public rating range. All prospects start in Year 1;
+  // the mystery rating remains hidden until the pick.
   const visible= p.mystery?Array.from({length:8},(_,i)=>i+1):
    Array.from({length:p.rangeMax-p.rangeMin+1},(_,i)=>p.rangeMin+i);
   const total=visible.reduce((sum,r)=>sum+weights[r-1],0);
   const expected=total?visible.reduce((sum,r)=>sum+r*weights[r-1],0)/total:4.5;
-  const age=p.mystery?2:p.year;
-  const score=expected+.38*(4-age)+random()*2.5+
+  const score=expected+random()*2.5+
     (team.roster.length>=state.settings.maxRoster?-.05:0);
   if(score>bestScore){bestScore=score;best=p}
  }
@@ -150,8 +149,8 @@ function draftView(){
  }
  const used=new Set(d.picks.map(p=>p.prospectIndex));
  const originId=d.lottery[d.picks.length],turn=futureRightOwner('draft',originId);
- const cards=d.prospects.map((p,i)=>'<button class="draft-prospect-card '+(used.has(i)?'draft-taken':'')+'" style="--draft-delay:'+(i*.16)+'s" data-draft-pick="'+i+'" '+(used.has(i)?'disabled':'')+'><span class="sub tiny">PROSPECT '+(i+1)+'</span><b>'+esc(p.name)+'</b><span class="draft-scout-rating">'+(p.mystery?'UNKNOWN':'+'+p.rangeMin+' to +'+p.rangeMax)+'</span><span class="sub">'+(p.mystery?'Career year unknown':'Career Year '+p.year)+'</span>'+(used.has(i)?'<span class="pill">Drafted</span>':'')+'</button>').join('');
- $('app').innerHTML=head+'<div class="panel"><h2>Draft board</h2><div class="draft-current-pick"><span class="pill">Pick '+(d.picks.length+1)+' of 3</span>'+teamMark(turn)+'<b>'+esc(state.teams[turn].name)+'</b><strong class="draft-team-delta">Team +'+bonusOf(state.teams[turn])+'</strong>'+(originId!==turn?'<span class="sub tiny">Traded draft right from '+esc(state.teams[originId].name)+'</span>':'')+'</div><p class="sub tiny">Select a prospect. The real rating and career year are already determined and will be revealed after the pick.</p><div class="draft-prospect-grid">'+cards+'</div></div>'+results;
+ const cards=d.prospects.map((p,i)=>'<button class="draft-prospect-card '+(used.has(i)?'draft-taken':'')+'" style="--draft-delay:'+(i*.16)+'s" data-draft-pick="'+i+'" '+(used.has(i)?'disabled':'')+'><span class="sub tiny">PROSPECT '+(i+1)+'</span><b>'+esc(p.name)+'</b><span class="draft-scout-rating">'+(p.mystery?'UNKNOWN':'+'+p.rangeMin+' to +'+p.rangeMax)+'</span><span class="sub">'+'Career Year 1'+'</span>'+(used.has(i)?'<span class="pill">Drafted</span>':'')+'</button>').join('');
+ $('app').innerHTML=head+'<div class="panel"><h2>Draft board</h2><div class="draft-current-pick"><span class="pill">Pick '+(d.picks.length+1)+' of 3</span>'+teamMark(turn)+'<b>'+esc(state.teams[turn].name)+'</b><strong class="draft-team-delta">Team +'+bonusOf(state.teams[turn])+'</strong>'+(originId!==turn?'<span class="sub tiny">Traded draft right from '+esc(state.teams[originId].name)+'</span>':'')+'</div><p class="sub tiny">Select a prospect. Every drafted player starts at Year 1. Their real rating is revealed after the pick.</p><div class="draft-prospect-grid">'+cards+'</div></div>'+results;
 }
 async function performDraftAction(action,index){
  if(busy||!state.draft)return;
