@@ -36,7 +36,7 @@ function revealDraftProspects(){
  d.prospects=Array.from({length:4},(_,i)=>{
   const bonus=weighted(state.settings.draftWeights),year=1;
   const [rangeMin,rangeMax]=prospectRange(bonus);
-  return {index:i,name:FIRST[randint(0,FIRST.length-1)]+' '+LAST[randint(0,LAST.length-1)],
+  return {index:i,name:randomFirstName()+' '+randomLastName(),
    bonus,year,rangeMin,rangeMax,mystery:i===mystery};
  });
  d.phase='picking';
