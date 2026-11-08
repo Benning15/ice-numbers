@@ -80,13 +80,17 @@ Bryon
 Buddy
 Burton
 Byron
+caanan
 Caleb
 Calvin
+cam
 Cameron
 Carey
+Carson
 Carter
 Cary
 Casey
+cash
 Chad
 Charles
 Charley
@@ -107,6 +111,9 @@ Colby
 Cole
 Colin
 Collin
+colt
+colten
+colton
 Connor
 Conrad
 Corey
@@ -115,6 +122,7 @@ Craig
 Cruz
 Curt
 Curtis
+dakota
 Dale
 Dallas
 Dalton
@@ -317,6 +325,7 @@ Josh
 Joshua
 Julian
 Justin
+kade
 Kai
 kalin
 Karl
@@ -448,6 +457,7 @@ Phil
 Philip
 Phillip
 Pierre
+Prestin
 Preston
 Quentin
 Quincy
@@ -464,6 +474,7 @@ Rasmus
 Ray
 Raymond
 Reed
+reegan
 Reggie
 Reid
 Rex
@@ -491,6 +502,7 @@ Roy
 Russel
 Russell
 Ryan
+Saige
 Sam
 Sammy
 Samuel
