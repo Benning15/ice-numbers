@@ -1,7 +1,7 @@
 'use strict';
 const TEAM_NAMES=["Estevan Bruins","Weyburn Red Wings","Regina Capitals","Saskatoon Blades","Moose Jaw Warriors","Warman Chiefs","Martensville Huskies","Swift Current Blues","Humboldt Broncos","La Ronge ICE","Lloydminster Oil","North Battleford Stars","Saskatchewan Wild","Yorkton Harvest","Round Lake Bears","Prince Albert Eagles"];
 const DEFAULTS={gamesPerTeam:30,maxRoster:5,careerLength:5,playoffTeams:8,seriesBestOf:7,
- normalWeights:[40,27,16,9,4,2,1.5,.5],draftWeights:[13,18,20,18,13,9,6,3],startYear:1,generatedPlayersPerSeason:7,
+ normalWeights:[40,27,16,9,4,2,1.5,.5],draftWeights:[13,18,20,18,13,9,6,3],startYear:1,generatedPlayersPerSeason:7,repeatGenerationPicks:true,
  goalRateAt9:0.85,playmakingRateAt9:0.35,goalCurve:2,playmakingCurve:2,
  goalVolatility:0.2,unnamedGoalsPerGame:2.8,unnamedPlaymakingChancesPerGame:0.5,unnamedIceTimeImpact:0.55,
  unnamedRecipientWeight:3,unnamedAssistWeight:3,recipientCurve:1.3,
