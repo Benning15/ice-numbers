@@ -7,6 +7,7 @@ function startGenerationStage(){
  if(state.generatedForSeason===year)throw Error('This season has already received generated players.');
  state.generation={
   year,phase:'ranking',count:state.settings.generatedPlayersPerSeason??DEFAULTS.generatedPlayersPerSeason,
+  repeatPicks:!!state.settings.repeatGenerationPicks,
   ranked:state.teams.map(t=>({teamId:t.id,base:bonusOf(t),rosterCount:t.roster.length}))
    .sort((a,b)=>b.base-a.base||a.teamId-b.teamId),
   selected:null,results:null
@@ -16,8 +17,12 @@ function revealGenerationPick(all=false){
  const g=state.generation;
  if(!g||!['ranking','chosen'].includes(g.phase))throw Error('Generation selection is not ready.');
  if(!g.selected){
-  // The chosen teams are drawn once; subsequent clicks only reveal them.
-  g.selected=shuffleDraft(state.teams.map(t=>t.id)).slice(0,g.count);
+  // Draw and save the full selection once; reveals never reroll it.
+  // With replacement, each draw independently includes every original team.
+  // Older in-progress stages (without repeatPicks) keep their unique-team rule.
+  g.selected=g.repeatPicks?
+   Array.from({length:g.count},()=>state.teams[randint(0,state.teams.length-1)].id):
+   shuffleDraft(state.teams.map(t=>t.id)).slice(0,g.count);
   g.revealed=0;
  }
  const shown=g.revealed??(g.phase==='chosen'?g.selected.length:0);
@@ -101,12 +106,13 @@ function completeGenerationAutomatically(){
 }
 function generationTeamTile(row,selected,showPicked){
  const id=row.teamId,team=state.teams[id];
- const isPicked=selected?.includes(id);
+ const picks=selected?.filter(x=>x===id).length||0;
+ const isPicked=picks>0;
  return '<div class="generation-team '+(showPicked&&isPicked?'generation-picked':'')+
   '" style="--generation-order:'+(showPicked&&isPicked?selected.indexOf(id):0)+'">'+
   '<span class="generation-team-main">'+teamMark(id)+'<b>'+esc(team.name)+'</b></span>'+
   '<span class="generation-team-total">+'+row.base+'</span>'+
-  (showPicked&&isPicked?'<span class="generation-team-status">SELECTED'+(futureRightOwner('generation',id)!==id?' → '+esc(state.teams[futureRightOwner('generation',id)].name):'')+'</span>':'')+
+  (showPicked&&isPicked?'<span class="generation-team-status">SELECTED'+(picks>1?' ×'+picks:'')+(futureRightOwner('generation',id)!==id?' · FIRST → '+esc(state.teams[futureRightOwner('generation',id)].name):'')+'</span>':'')+
   '</div>';
 }
 function generationView(){
@@ -114,7 +120,8 @@ function generationView(){
  if(!g){titlebar('Player Generation','No generation currently pending.');$('app').innerHTML='<div class="panel"><button data-nav="dashboard">Dashboard</button></div>';return}
  const count=(g.selected||[]).length;
  titlebar('Offseason Player Generation','Season '+g.year+' · Random player generation');
- const summary='<div class="panel"><h2>Season '+g.year+' · Player generation</h2><p class="sub tiny">Every team is ranked by its combined permanent base + (0 to +40). Exactly '+g.count+' of the 16 teams are randomly selected (unless the setting is 0). Full rosters can be selected: a generated player replaces the weakest only if stronger, or if equally rated and younger. Hidden Motivation never counts.</p></div>';
+ const drawRule=g.repeatPicks?'Each draw includes all 16 teams, so a team can win more than once.':'Each draw selects a different team; no team can win twice.';
+ const summary='<div class="panel"><h2>Season '+g.year+' · Player generation</h2><p class="sub tiny">Teams are ranked by combined permanent base + (0 to +40). '+g.count+' player-generation draws. '+drawRule+' Full rosters can be selected: a generated player replaces the weakest only if stronger, or if equally rated and younger. Hidden Motivation never counts. A traded generation right applies only to the first selection of its original team.</p></div>';
  if(g.phase==='ranking'||g.phase==='chosen'){
   const shown=g.selected?g.selected.slice(0,g.revealed??g.selected.length):[];
   const complete=g.selected&&shown.length===g.selected.length;
@@ -126,9 +133,9 @@ function generationView(){
   $('app').innerHTML=summary+'<div class="panel"><div class="stickybar"><h2>All 16 teams · Highest + first</h2><span class="pill">'+shown.length+' / '+g.count+' selected</span></div><div class="generation-team-grid">'+cards+'</div><div class="buttonrow">'+controls+'</div></div>';
   return;
  }
- const selectedRows=(g.selected||[]).map(id=>g.ranked.find(r=>r.teamId===id));
+ const selectedRows=[...new Set(g.selected||[])].map(id=>g.ranked.find(r=>r.teamId===id));
  if(g.phase==='teams'){
-  $('app').innerHTML=summary+'<div class="panel"><h2>'+count+' Teams Selected</h2><p class="sub tiny">Each original team provides one opportunity. If it was traded, the new owner receives the player. Full rosters keep their best five by base + and career year.</p><div class="generation-team-grid">'+selectedRows.map(r=>generationTeamTile(r,g.selected,true)).join('')+'</div><div class="buttonrow"><button class="primary" data-generation-action="generate">Generate '+count+' Players</button></div></div>';
+  $('app').innerHTML=summary+'<div class="panel"><h2>'+count+' Generation Draws · '+selectedRows.length+' Teams Selected</h2><p class="sub tiny">Each draw generates one separate player. If a traded right applies to the first draw for an original team, its holder receives that player; later draws for the same original team go to the original team. Full rosters keep their best five by base + and career year.</p><div class="generation-team-grid">'+selectedRows.map(r=>generationTeamTile(r,g.selected,true)).join('')+'</div><div class="buttonrow"><button class="primary" data-generation-action="generate">Generate '+count+' Players</button></div></div>';
   return;
  }
  if(g.phase==='results'){
