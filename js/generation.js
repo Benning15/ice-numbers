@@ -114,7 +114,7 @@ function generationView(){
  if(!g){titlebar('Player Generation','No generation currently pending.');$('app').innerHTML='<div class="panel"><button data-nav="dashboard">Dashboard</button></div>';return}
  const count=(g.selected||[]).length;
  titlebar('Offseason Player Generation','Season '+g.year+' · Random player generation');
- const summary='<div class="panel"><h2>Season '+g.year+' · Player generation</h2><p class="sub tiny">Every team is ranked by its combined permanent base + (0 to +24). Exactly '+g.count+' of the 16 teams are randomly selected (unless the setting is 0). Full rosters can be selected: a generated player replaces the weakest only if stronger, or if equally rated and younger. Hidden Motivation never counts.</p></div>';
+ const summary='<div class="panel"><h2>Season '+g.year+' · Player generation</h2><p class="sub tiny">Every team is ranked by its combined permanent base + (0 to +40). Exactly '+g.count+' of the 16 teams are randomly selected (unless the setting is 0). Full rosters can be selected: a generated player replaces the weakest only if stronger, or if equally rated and younger. Hidden Motivation never counts.</p></div>';
  if(g.phase==='ranking'||g.phase==='chosen'){
   const shown=g.selected?g.selected.slice(0,g.revealed??g.selected.length):[];
   const complete=g.selected&&shown.length===g.selected.length;
@@ -128,7 +128,7 @@ function generationView(){
  }
  const selectedRows=(g.selected||[]).map(id=>g.ranked.find(r=>r.teamId===id));
  if(g.phase==='teams'){
-  $('app').innerHTML=summary+'<div class="panel"><h2>'+count+' Teams Selected</h2><p class="sub tiny">Each original team provides one opportunity. If it was traded, the new owner receives the player. Full rosters keep their best three by base + and career year.</p><div class="generation-team-grid">'+selectedRows.map(r=>generationTeamTile(r,g.selected,true)).join('')+'</div><div class="buttonrow"><button class="primary" data-generation-action="generate">Generate '+count+' Players</button></div></div>';
+  $('app').innerHTML=summary+'<div class="panel"><h2>'+count+' Teams Selected</h2><p class="sub tiny">Each original team provides one opportunity. If it was traded, the new owner receives the player. Full rosters keep their best five by base + and career year.</p><div class="generation-team-grid">'+selectedRows.map(r=>generationTeamTile(r,g.selected,true)).join('')+'</div><div class="buttonrow"><button class="primary" data-generation-action="generate">Generate '+count+' Players</button></div></div>';
   return;
  }
  if(g.phase==='results'){
