@@ -49,12 +49,12 @@ function testingInformation(){
  const threshold=Object.entries(t.goalSeasons).map(([name,n])=>'<tr><td>'+name[0].toUpperCase()+name.slice(1)+' or more goals</td><td>'+fmt(n)+'</td></tr>');
  const multi=Object.entries(t.multiGoalGames).map(([name,n])=>'<tr><td>'+name[0].toUpperCase()+name.slice(1)+' or more goals in one game</td><td>'+fmt(n)+'</td></tr>');
  $('app').innerHTML=
- '<div class="notice">These are measured results, not forced targets. Team + means the combined permanent base ratings (0 to +24), not motivation-adjusted strength. Playoff and non-playoff averages include eight teams per completed season; championship averages include one champion per season. Changing settings does not retroactively change recorded games or test results. Use Reset Testing Information when comparing new settings.</div>'+
+ '<div class="notice">These are measured results, not forced targets. Team + means the combined permanent base ratings (0 to +40 with five players), not motivation-adjusted strength. Playoff and non-playoff averages include eight teams per completed season; championship averages include one champion per season. Changing settings does not retroactively change recorded games or test results. Use Reset Testing Information when comparing new settings.</div>'+
  '<div class="buttonrow"><button id="reset-testing" class="danger">Reset Testing Information (keep league history)</button></div>'+
  section(t,'All measured seasons')+
  (t.checkpoints[100]?section(t.checkpoints[100],'Checkpoint after 100 seasons'):'<div class="panel"><h3>Checkpoint after 100 seasons</h3><p class="sub">Available after 100 completed test seasons.</p></div>')+
  (t.checkpoints[1000]?section(t.checkpoints[1000],'Checkpoint after 1,000 seasons'):'<div class="panel"><h3>Checkpoint after 1,000 seasons</h3><p class="sub">Available after 1,000 completed test seasons.</p></div>')+
- header('Team scoring by combined base rating','Uncapped sum of up to three player ratings. Goals are counted only in regular-season games.')+
+ header('Team scoring by combined base rating','Uncapped sum of up to five player ratings. Goals are counted only in regular-season games.')+
  table(['Team +','Team games','Goals/team/game'],rows)+'</div>'+
  header('Unidentified roster and ice time','Goals from unidentified players include independent rolls and goals created by named teammates.')+
  table(['Named players','Team games','All goals/team/game','Unidentified goals/team/game'],byRoster)+'</div>'+
