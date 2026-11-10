@@ -1,11 +1,13 @@
 'use strict';
 // Mathematical preview of current unsaved Settings; does not consume game RNG.
+// Five independent rating selectors match the five-player roster cap.
+const ESTIMATOR_DEFAULT_RATINGS=[9,3,0,0,0];
 function scoringEstimatorMarkup(){
- const selectors=[0,1,2].map(i=>'<div class="control"><label for="preview-effective-'+i+'">Player '+('ABC'[i])+' effective rating</label>'+
+ const selectors=ESTIMATOR_DEFAULT_RATINGS.map((initialRating,i)=>'<div class="control"><label for="preview-effective-'+i+'">Player '+('ABC'[i])+' effective rating</label>'+
  '<select id="preview-effective-'+i+'" class="select">'+Array.from({length:11},(_,r)=>
- '<option value="'+r+'" '+(r===[9,3,0][i]?'selected':'')+'>'+(r?'+'+r:'Empty / 0')+'</option>').join('')+'</select></div>').join('');
+ '<option value="'+r+'" '+(r===initialRating?'selected':'')+'>'+(r?'+'+r:'Empty / 0')+'</option>').join('')+'</select></div>').join('');
  return '<section class="scoring-preview"><h3>Live Scoring Estimator</h3>'+
- '<p class="help">Try a sample roster with current unsaved settings. Ratings here are effective ratings after motivation. This estimates average goals/game, not a specific game score; actual results remain random. Players use neutral 50/50 scoring tendencies.</p>'+
+ '<p class="help">Try a sample roster with up to five named players using current unsaved settings. Choose Empty / 0 for unused slots. Ratings here are effective ratings after motivation. This estimates average goals/game, not a specific game score; actual results remain random. Players use neutral 50/50 scoring tendencies.</p>'+
  '<div class="scoring-preview-controls">'+selectors+'</div>'+
  '<div id="scoring-estimator-output" aria-live="polite"></div></section>';
 }
@@ -22,7 +24,7 @@ function updateScoringEstimator(){
  s.unnamedGoalsPerGame>=0&&s.unnamedPlaymakingChancesPerGame>=0&&s.unnamedIceTimeImpact>=0&&s.unnamedIceTimeImpact<=1&&s.unnamedRecipientWeight>0&&s.recipientCurve>0)){
   target.textContent='Check scoring settings first.';return;
  }
- const elems=[0,1,2].map(i=>$('preview-effective-'+i));
+ const elems=ESTIMATOR_DEFAULT_RATINGS.map((_,i)=>$('preview-effective-'+i));
  if(elems.some(e=>!e))return;
  const players=elems.map((e,i)=>({id:i+1,bonus:Number(e.value),name:'Player '+('ABC'[i]),goalTendency:50,motivation:0}))
   .filter(p=>p.bonus>0);
