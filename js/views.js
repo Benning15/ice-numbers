@@ -81,16 +81,25 @@ function teamBonusTotals(seasons,active){
  return totals;
 }
 async function alltime(){
- titlebar('All-Time Franchise Records','Sort any column. Every season adds to the historical totals.');
+ titlebar('All-Time Franchise Records','Franchise totals, playoff streaks, dynasties and title droughts.');
  $('app').innerHTML='<div class="panel"><p class="sub">Loading franchise history…</p></div>';
  const seasons=await getAll('seasons');
  if(view!=='alltime')return;
+ const tabs='<div class="panel"><div class="buttonrow" style="margin-top:0">'+
+  '<button data-alltime-section="records" '+(alltimeSection==='records'?'class="primary" ':'')+
+  'aria-pressed="'+(alltimeSection==='records'?'true':'false')+'">Franchise Records</button>'+
+  '<button data-alltime-section="streaks" '+(alltimeSection==='streaks'?'class="primary" ':'')+
+  'aria-pressed="'+(alltimeSection==='streaks'?'true':'false')+'">Streaks &amp; Droughts</button></div></div>';
+ if(alltimeSection==='streaks'){
+  $('app').innerHTML=tabs+streaksPage(seasons);
+  return;
+ }
  const bonusTotals=teamBonusTotals(seasons,state.activeSeason);
  const items=state.teams.map(t=>({...t,teamBonusTotal:bonusTotals[t.id]})).sort((a,b)=>sortBy==='name'?(sortDescending?b.name.localeCompare(a.name):a.name.localeCompare(b.name)):(sortDescending?1:-1)*(av(b,sortBy)-av(a,sortBy))||a.id-b.id);
  const columns=['name',...ALL_KEYS.map(x=>x[0])];
- const heads=columns.map(key=>`<th class="sort" data-sort="${key}" tabindex="0" role="button">${key==='name'?'Team':ALL_KEYS.find(x=>x[0]===key)?.[1]}${sortBy===key?(sortDescending?' ▼':' ▲'):''}</th>`);
- const rows=items.map(t=>`<tr><td>${teamLink(t.id)}</td>${ALL_KEYS.map(([key])=>`<td>${key==='winpct'?pct(t.regW,t.regW+t.regL+(t.regOTL||0)):key==='teamBonusTotal'?'+'+fmt(t[key]):fmt(t[key])}</td>`).join('')}</tr>`);
- $('app').innerHTML=`<div class="panel"><div class="stickybar"><h2>Complete league comparison</h2><span class="pill gold">${fmt(state.season)} seasons</span></div><p class="sub tiny" style="margin-bottom:12px">Scroll sideways for every record. Clicking any heading sorts the table. Total Team + adds each season's capped regular-season roster bonus, including a regular season currently in playoffs.</p><div class="tablewrap"><table><thead><tr>${heads.join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div></div>`;
+ const heads=columns.map(key=>'<th class="sort" data-sort="'+key+'" tabindex="0" role="button">'+(key==='name'?'Team':ALL_KEYS.find(x=>x[0]===key)?.[1])+(sortBy===key?(sortDescending?' ▼':' ▲'):'')+'</th>');
+ const rows=items.map(t=>'<tr><td>'+teamLink(t.id)+'</td>'+ALL_KEYS.map(([key])=>'<td>'+(key==='winpct'?pct(t.regW,t.regW+t.regL+(t.regOTL||0)):key==='teamBonusTotal'?'+'+fmt(t[key]):fmt(t[key]))+'</td>').join('')+'</tr>');
+ $('app').innerHTML=tabs+'<div class="panel"><div class="stickybar"><h2>Complete league comparison</h2><span class="pill gold">'+fmt(state.season)+' seasons</span></div><p class="sub tiny" style="margin-bottom:12px">Scroll sideways for every record. Clicking any heading sorts the table. Total Team + adds each season’s capped regular-season roster bonus, including a regular season currently in playoffs.</p><div class="tablewrap"><table><thead><tr>'+heads.join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table></div></div>';
 }
 function gameTable(gs){
  return table(['Game','Team +','Final score','Result','Winner','Goal scorers'],
