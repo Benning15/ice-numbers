@@ -146,6 +146,7 @@ async function boot(){
  try{
   db=await openDB();
   const saved=await get('meta','main');
+  const needsRosterUpgrade=!!saved&&saved.value?.settings?.maxRoster!==DEFAULTS.maxRoster;
   state=saved?.value||await newUniverseState();
   state.settings={...clone(DEFAULTS),...(state.settings||{})};
   state.settings.maxRoster=DEFAULTS.maxRoster; // Upgrade saved leagues without touching rosters or history.
@@ -169,7 +170,7 @@ async function boot(){
    startGenerationStage();
    await commitState();
   }
-  if(!saved||saved?.value?.settings?.maxRoster!==DEFAULTS.maxRoster)await commitState();
+  if(!saved||needsRosterUpgrade)await commitState();
   $('nav').addEventListener('click',handleClick);$('app').addEventListener('click',handleClick);$('app').addEventListener('change',e=>{
  if(e.target.dataset.logoInput!==undefined){
   const file=e.target.files?.[0];
