@@ -9,7 +9,9 @@ function settings(){
  '<div class="formgrid">'+
  '<div class="panel"><h2>League and player generation</h2>'+
  sel('gamesPerTeam','Games per team',[[30,'30'],[45,'45'],[60,'60']])+
- val('generatedPlayersPerSeason','Random generated players across league/year',0,16,1,'After the draft, this many distinct teams are selected from all 16. Each generates one player; at 5/5, the weakest is cut only if the new player is better (+), or younger with the same +. Hidden Motivation does not matter. Draft picks are separate.')+
+ val('generatedPlayersPerSeason','Random generated players across league/year',0,16,1,'After the draft, this many player-generation draws are made from the 16 teams. Each draw generates one player. At 5/5, the weakest is cut only if the new player is better (+), or younger with the same +. Hidden Motivation does not matter. Draft picks are separate.')+
+ '<div class="control"><label for="cfg-repeatGenerationPicks">Allow repeat team selections in generation</label><input id="cfg-repeatGenerationPicks" type="checkbox" '+(s.repeatGenerationPicks?'checked':'')+'></div>'+
+ '<p class="help">On: every draw includes all 16 teams, even teams already selected this offseason. Off: each team can be selected only once. Traded generation rights apply to that original team\'s first selection only. Changes apply to future drawings.</p>'+
  val('careerLength','Maximum career years',1,15,1)+
  '<p class="help">Teams have up to five named players. Three non-playoff teams win lottery draft picks. All 16 teams, including full rosters, are eligible for random generation.</p>'+
  '<h3 class="mutedline">Base rating probabilities</h3><p class="help">Percentages must sum to exactly 100 for each source. +8 remains rare.</p>'+
@@ -67,6 +69,9 @@ async function saveSettings(makeDefault=false){
    setBanner(k+' probabilities must total 100%.',true);return false;
   }
  }
+ const repeatInput=$('cfg-repeatGenerationPicks');
+ if(!repeatInput){setBanner('Missing repeat-generation setting.',true);return false}
+ s.repeatGenerationPicks=repeatInput.checked;
  s.maxRoster=DEFAULTS.maxRoster;state.settings=s;await commitState();
  if(makeDefault){await commitDefaultSettings(s);setBanner('Settings saved and set as defaults for future new leagues.')}
  else setBanner('Settings saved for future seasons.');
