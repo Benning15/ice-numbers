@@ -208,7 +208,7 @@ function recordTestingGame(g,a,b){
  if(g.stage!=='regular')return;
  const t=testingData();t.games++;t.goals+=g.scoreA+g.scoreB;if(g.coin)t.otGames++;
  for(const team of [a,b]){
-  const plays=g.goalEvents.filter(x=>x.teamId===team.id),strength=bonusOf(team),group=strength<5?'0–4':strength<9?'5–8':strength<13?'9–12':strength<17?'13–16':strength<25?'17–24':'25+';
+  const plays=g.goalEvents.filter(x=>x.teamId===team.id),strength=bonusOf(team),group=strength<5?'0–4':strength<9?'5–8':strength<13?'9–12':strength<17?'13–16':strength<25?'17–24':strength<29?'25–28':strength<33?'29–32':strength<37?'33–36':'37–40';
   const stats=t.byStrength[group]??={games:0,goals:0};
   stats.games++;stats.goals+=plays.length;
   const depth=t.byRosterCount[team.roster.length]??={games:0,goals:0,unidentifiedGoals:0};
