@@ -9,9 +9,9 @@ function settings(){
  '<div class="formgrid">'+
  '<div class="panel"><h2>League and player generation</h2>'+
  sel('gamesPerTeam','Games per team',[[30,'30'],[45,'45'],[60,'60']])+
- val('generatedPlayersPerSeason','Random generated players across league/year',0,16,1,'After the draft, this many distinct teams are selected from all 16. Each generates one player; at 3/3, the weakest is cut only if the new player is better (+), or younger with the same +. Hidden Motivation does not matter. Draft picks are separate.')+
+ val('generatedPlayersPerSeason','Random generated players across league/year',0,16,1,'After the draft, this many distinct teams are selected from all 16. Each generates one player; at 5/5, the weakest is cut only if the new player is better (+), or younger with the same +. Hidden Motivation does not matter. Draft picks are separate.')+
  val('careerLength','Maximum career years',1,15,1)+
- '<p class="help">Teams have up to three named players. Three non-playoff teams win lottery draft picks. All 16 teams, including full rosters, are eligible for random generation.</p>'+
+ '<p class="help">Teams have up to five named players. Three non-playoff teams win lottery draft picks. All 16 teams, including full rosters, are eligible for random generation.</p>'+
  '<h3 class="mutedline">Base rating probabilities</h3><p class="help">Percentages must sum to exactly 100 for each source. +8 remains rare.</p>'+
  ['normalWeights','draftWeights'].map(k=>'<div class="mutedline"><b>'+(k==='normalWeights'?'Normal generation':'Lottery draft')+'</b>'+s[k].map((w,i)=>'<div class="control"><label>+ '+(i+1)+' chance (%)</label><input type="number" step="0.1" min="0" max="100" data-weight="'+k+'" data-index="'+i+'" value="'+w+'"></div>').join('')+oddsStatusHtml(k,s[k])+'</div>').join('')+
  '</div>'+
@@ -67,7 +67,7 @@ async function saveSettings(makeDefault=false){
    setBanner(k+' probabilities must total 100%.',true);return false;
   }
  }
- state.settings=s;await commitState();
+ s.maxRoster=DEFAULTS.maxRoster;state.settings=s;await commitState();
  if(makeDefault){await commitDefaultSettings(s);setBanner('Settings saved and set as defaults for future new leagues.')}
  else setBanner('Settings saved for future seasons.');
  settings();return true;
@@ -113,6 +113,7 @@ async function importBackup(file){
   // Restore in-memory state on failure; IndexedDB rolls the write back as a unit.
   state=clone(backup.meta);
   state.settings={...clone(DEFAULTS),...(state.settings||{})};
+  state.settings.maxRoster=DEFAULTS.maxRoster; // Upgrade imported leagues to five-player rosters.
   state.activeSeason??=null;
   state.regularSeason??=null;
   state.draft??=null;state.generation??=null;state.generatedForSeason??=null;state.upcomingDraftNotes??=[];
@@ -136,7 +137,7 @@ async function importBackup(file){
    'Import failed; your previous saved league was left unchanged: '+err.message,true);
  }finally{busy=false;await render()}
 }
-async function newUniverseState(){const next=initialState(),savedDefaults=await get('meta','customSettingsDefaults');if(savedDefaults?.value)next.settings={...clone(DEFAULTS),...clone(savedDefaults.value)};delete next.settings.goalTargetAnnualChange;return next}
+async function newUniverseState(){const next=initialState(),savedDefaults=await get('meta','customSettingsDefaults');if(savedDefaults?.value)next.settings={...clone(DEFAULTS),...clone(savedDefaults.value)};next.settings.maxRoster=DEFAULTS.maxRoster;delete next.settings.goalTargetAnnualChange;return next}
 async function resetAll(){if(!confirm('Delete this league and all its historical records? Download a backup first if you want to keep it.'))return;await clearAll();state=await newUniverseState();individualSeasonCache=null;teamGamesCache=null;teamGamesYear=null;teamGamesTeam=null;seasonScoringYear=null;seasonScoringStage='regular';await commitState();selectedSeason=null;view='dashboard';setBanner('New universe created. Your previous league was deleted.');await render()}
 async function render(){if(view!=='teams')teamGamesCache=null;renderNav();$('banner').innerHTML=notice?`<div class="notice">${esc(notice)}</div>`:'';if(view==='dashboard')await dashboard();else if(view==='standings')await standings();else if(view==='playoffs')await playoffs();else if(view==='draft')draftView();else if(view==='generation')generationView();else if(view==='preview')await preseasonPreviewView();else if(view==='scoring')await seasonScoringView();else if(view==='commissioner')commissionerView();else if(view==='faq')faq();else if(view==='testing')testingInformation();else if(view==='alltime')await alltime();else if(view==='history')await history();else if(view==='teams')teams();else if(view==='players')await players();else if(view==='playerDetail')await playerProfile();else if(view==='customize')customize();else if(view==='settings')settings();$('season-label').textContent=state.regularSeason?'Regular: Season '+state.regularSeason.season:state.activeSeason?'Playoffs: Season '+state.activeSeason.season:(state.draft?'Draft: Season '+state.season:state.generation?'Generation: Season '+(state.season+1):preseasonPreviewRequired()?'Preview: Season '+(state.season+1):state.seasonComplete?'Season '+state.season+' Complete':'Next: Season '+fmt(state.season+1))}
 function applyPlayerSearch(){playerQuery=$('player-search')?.value||'';playerPage=0;render()}
@@ -147,6 +148,7 @@ async function boot(){
   const saved=await get('meta','main');
   state=saved?.value||await newUniverseState();
   state.settings={...clone(DEFAULTS),...(state.settings||{})};
+  state.settings.maxRoster=DEFAULTS.maxRoster; // Upgrade saved leagues without touching rosters or history.
   await hydrateTestingOutcomeHistory();
   state.version=3;state.activeSeason??=null;state.regularSeason??=null;state.transactions??=[];state.nextTransactionId??=state.transactions.length?Math.max(...state.transactions.map(t=>t.id))+1:1;futureRightsStore();
   futureRightsStore();state.seasonComplete??=false;state.previewConfirmedForSeason??=0;state.draft??=null;state.generation??=null;state.generatedForSeason??=null;state.upcomingDraftNotes??=[];
@@ -167,7 +169,7 @@ async function boot(){
    startGenerationStage();
    await commitState();
   }
-  if(!saved)await commitState();
+  if(!saved||saved?.value?.settings?.maxRoster!==DEFAULTS.maxRoster)await commitState();
   $('nav').addEventListener('click',handleClick);$('app').addEventListener('click',handleClick);$('app').addEventListener('change',e=>{
  if(e.target.dataset.logoInput!==undefined){
   const file=e.target.files?.[0];
