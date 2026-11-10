@@ -3,7 +3,7 @@
 // Five independent rating selectors match the five-player roster cap.
 const ESTIMATOR_DEFAULT_RATINGS=[9,3,0,0,0];
 function scoringEstimatorMarkup(){
- const selectors=ESTIMATOR_DEFAULT_RATINGS.map((initialRating,i)=>'<div class="control"><label for="preview-effective-'+i+'">Player '+('ABC'[i])+' effective rating</label>'+
+ const selectors=ESTIMATOR_DEFAULT_RATINGS.map((initialRating,i)=>'<div class="control"><label for="preview-effective-'+i+'">Player '+('ABCDE'[i])+' effective rating</label>'+
  '<select id="preview-effective-'+i+'" class="select">'+Array.from({length:11},(_,r)=>
  '<option value="'+r+'" '+(r===initialRating?'selected':'')+'>'+(r?'+'+r:'Empty / 0')+'</option>').join('')+'</select></div>').join('');
  return '<section class="scoring-preview"><h3>Live Scoring Estimator</h3>'+
@@ -26,7 +26,7 @@ function updateScoringEstimator(){
  }
  const elems=ESTIMATOR_DEFAULT_RATINGS.map((_,i)=>$('preview-effective-'+i));
  if(elems.some(e=>!e))return;
- const players=elems.map((e,i)=>({id:i+1,bonus:Number(e.value),name:'Player '+('ABC'[i]),goalTendency:50,motivation:0}))
+ const players=elems.map((e,i)=>({id:i+1,bonus:Number(e.value),name:'Player '+('ABCDE'[i]),goalTendency:50,motivation:0}))
   .filter(p=>p.bonus>0);
  const unknown={id:null,label:'Unidentified roster',independent:unidentifiedRate({roster:players},s),fromPlays:0,created:0};
  const rows=players.map(p=>({id:p.id,label:p.name+' (+'+p.bonus+')',independent:goalRate(p,s),fromPlays:0,created:playmakingRate(p,s)}));
